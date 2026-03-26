@@ -603,6 +603,8 @@ export interface OrderSyncOptions {
 export interface ShopQueryOptions {
   shopId?: number | null;
   shopIds?: number[];
+  startDate?: string;  // YYYY-MM-DD
+  endDate?: string;    // YYYY-MM-DD
 }
 
 function _appendShopParams(params: URLSearchParams, options: ShopQueryOptions) {
@@ -611,6 +613,8 @@ function _appendShopParams(params: URLSearchParams, options: ShopQueryOptions) {
   } else if (options.shopId) {
     params.append('shop_id', String(options.shopId));
   }
+  if (options.startDate) params.append('start_date', options.startDate);
+  if (options.endDate)   params.append('end_date', options.endDate);
 }
 
 export const ordersApi = {
@@ -854,12 +858,16 @@ export const onboardingApi = {
 export interface DashboardStats {
   total_products: number;
   published_products?: number;
+  total_views: number;
+  today_visits: number;
   total_customers: number;
   total_orders: number;
   active_listings: number;
   new_orders_unread: number;
   available_for_payout?: number;
   payout_currency?: string;
+  payout_label?: string;
+  date_filtered?: boolean;
   changes: {
     products: number;
     customers: number;

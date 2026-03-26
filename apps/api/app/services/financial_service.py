@@ -262,22 +262,33 @@ class FinancialService:
                 self._set_cached(ck, result)
                 return result
 
-        # Fallback: derive balance from most recent ledger entry's running balance.
-        # This is the primary code path since Etsy's payment-account API endpoint
-        # is not available for all shops. The ledger's running `balance` field
-        # is updated with every transaction and accurately reflects the current
-        # account balance.
+        # Fallback: compute balance as SUM(amount) across all ledger entries.
+        # This is more reliable than using the `balance` field on the latest row,
+        # because some entry types (e.g. prolist/advertising) may store incorrect
+        # running-balance values in that column.
         filters = [LedgerEntry.tenant_id == tenant_id]
         self._apply_shop_filter(filters, LedgerEntry.shop_id, shop_id, shop_ids)
 
-        latest = (
-            self.db.query(LedgerEntry.balance, LedgerEntry.currency, LedgerEntry.entry_created_at)
+        # SUM(amount) gives the true net balance remaining in the account after
+        # all transactions (sales, fees, disbursements, advertising, etc.).
+        balance_row = (
+            self.db.query(
+                func.coalesce(func.sum(LedgerEntry.amount), 0),
+            )
             .filter(and_(*filters))
+            .first()
+        )
+        current_balance = balance_row[0] if balance_row else 0
+
+        # Get currency from the most recent entry
+        currency_row = (
+            self.db.query(LedgerEntry.currency)
+            .filter(and_(*filters))
+            .filter(LedgerEntry.currency.isnot(None))
             .order_by(LedgerEntry.entry_created_at.desc(), LedgerEntry.id.desc())
             .first()
         )
-        current_balance = latest[0] if latest else 0
-        currency = latest[1] if latest else "USD"
+        currency = currency_row[0] if currency_row else "USD"
 
         payout_filters = filters + [
             LedgerEntry.entry_type.in_(["payout", "Payment", "Deposit"]),
@@ -303,7 +314,7 @@ class FinancialService:
         result = {
             "current_balance": current_balance,
             "reserve_held": abs(reserve_total),
-            "available_for_payout": max(0, current_balance - abs(reserve_total)),
+            "available_for_payout": current_balance - abs(reserve_total),
             "currency": currency,
             "recent_payouts": [
                 {"amount": abs(p[0]), "date": p[1].isoformat() if p[1] else None}

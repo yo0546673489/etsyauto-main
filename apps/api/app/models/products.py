@@ -55,6 +55,10 @@ class Product(Base):
     processing_min = Column(Integer, default=1)  # Days
     processing_max = Column(Integer, default=3)  # Days
 
+    # Etsy stats (synced from Etsy API)
+    views = Column(Integer, default=0)           # Total listing views from Etsy
+    num_favorers = Column(Integer, default=0)    # Number of users who favorited
+
     # Import tracking
     source = Column(String(50), CheckConstraint("source IN ('csv','json','api','manual','etsy')"), default='manual')
     ingest_batch_id = Column(String(255))

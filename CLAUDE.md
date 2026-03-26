@@ -3,7 +3,7 @@
 **שם הפרויקט**: Profitly (Etsy Automation Platform)
 **עודכן לאחרונה**: 2026-03-26
 **סטטוס**: Production-Ready ✅
-**גרסה**: 1.0.0
+**גרסה**: 1.1.0
 
 ---
 
@@ -96,7 +96,7 @@
 ### External APIs
 | API | תפקיד |
 |----|--------|
-| Etsy API v3 | מוצרים, הזמנות, חנויות |
+| Etsy API v3 | מוצרים, הזמנות, חנויות, לדג'ר |
 | Google OAuth 2.0 | התחברות חברתית |
 | Resend | שליחת אימיילים |
 | AdsPower | Browser automation לשליחת הודעות |
@@ -106,7 +106,7 @@
 ## 3. מבנה התיקיות
 
 ```
-etsyauto-main/
+etsyauto-main/  (aka "פרוייקט של אטסי")
 │
 ├── apps/
 │   ├── web/                          # Frontend — Next.js 14 (~1.7MB)
@@ -120,7 +120,7 @@ etsyauto-main/
 │   │   │   ├── verify-email/         # אישור אימייל
 │   │   │   ├── accept-invitation/    # קבלת הזמנה לצוות
 │   │   │   ├── dashboard/
-│   │   │   │   ├── owner/            # Dashboard בעל חנות (עיקרי)
+│   │   │   │   ├── owner/page.tsx    # ✅ Dashboard בעל חנות (עיקרי) — עודכן
 │   │   │   │   ├── admin/            # Dashboard מנהל
 │   │   │   │   ├── supplier/         # Dashboard ספק
 │   │   │   │   └── viewer/           # Dashboard צופה (read-only)
@@ -141,138 +141,51 @@ etsyauto-main/
 │   │   │   ├── layout/
 │   │   │   │   ├── Sidebar.tsx       # ניווט צד (RTL, עברית)
 │   │   │   │   ├── TopBar.tsx        # Header עם תפריט משתמש
-│   │   │   │   └── DashboardLayout.tsx # Wrapper לכל דפי Dashboard
+│   │   │   │   └── DashboardLayout.tsx
 │   │   │   ├── dashboard/
-│   │   │   │   ├── StatCard.tsx      # כרטיסי KPI (צפיות, לקוחות, הזמנות, תשלום)
-│   │   │   │   ├── TrendChart.tsx    # גרף מגמות שבועי (Recharts)
-│   │   │   │   ├── RecentOrders.tsx  # טבלת הזמנות אחרונות
-│   │   │   │   ├── ConnectionStatus.tsx # סטטוס חיבור חנות
-│   │   │   │   └── StatusOverview.tsx  # מדדי בריאות חנות
-│   │   │   ├── ui/
-│   │   │   │   ├── Modal.tsx         # Dialog כללי
-│   │   │   │   ├── Button.tsx        # כפתור
-│   │   │   │   ├── Input.tsx         # שדה קלט
-│   │   │   │   ├── Alert.tsx         # התראה / toast
-│   │   │   │   ├── DataTable.tsx     # טבלה עם מיון
-│   │   │   │   └── DisconnectedShopBanner.tsx
-│   │   │   └── auth/
-│   │   │       ├── AuthLayout.tsx    # עיצוב דפי auth
-│   │   │       └── GoogleSignInButton.tsx
+│   │   │   │   ├── TrendChart.tsx    # ✅ גרף מגמות מלא — עוצב מחדש
+│   │   │   │   ├── DateRangePicker.tsx # ✅ NEW — בורר תאריכים עברי
+│   │   │   │   ├── RecentOrders.tsx
+│   │   │   │   ├── ConnectionStatus.tsx
+│   │   │   │   └── StatusOverview.tsx
+│   │   │   └── ui/
+│   │   │       ├── DisconnectedShopBanner.tsx
+│   │   │       └── ...
 │   │   │
-│   │   ├── lib/                      # Utilities & hooks
-│   │   │   ├── api.ts                # API client + כל הטיפוסים
-│   │   │   ├── auth-context.ts       # ניהול מצב auth
-│   │   │   ├── shop-context.ts       # בחירת חנות פעילה
-│   │   │   ├── language-context.ts   # עברית / אנגלית i18n
-│   │   │   ├── toast-context.ts      # Toast notifications
-│   │   │   ├── translations.ts       # מחרוזות תרגום
-│   │   │   └── utils.ts              # פונקציות עזר
-│   │   │
-│   │   ├── e2e/                      # בדיקות Playwright
-│   │   ├── public/                   # קבצים סטטיים
-│   │   ├── package.json
-│   │   ├── next.config.js
-│   │   ├── tailwind.config.js
-│   │   └── Dockerfile
+│   │   └── lib/
+│   │       ├── api.ts                # ✅ עודכן — DateRange params, DashboardStats
+│   │       ├── auth-context.ts
+│   │       ├── shop-context.ts
+│   │       ├── language-context.ts
+│   │       ├── toast-context.ts
+│   │       └── order-status.ts
 │   │
 │   ├── api/                          # Backend — FastAPI (~3MB)
-│   │   ├── app/
-│   │   │   ├── main.py               # נקודת כניסה, רישום routers
-│   │   │   ├── api/endpoints/        # 24 מודולי endpoints
-│   │   │   │   ├── auth.py           # register, login, logout, refresh, me
-│   │   │   │   ├── google_oauth.py   # Google + Etsy OAuth flows
-│   │   │   │   ├── shops.py          # ניהול חנויות Etsy
-│   │   │   │   ├── products.py       # CRUD מוצרים + ייבוא + סנכרון
-│   │   │   │   ├── orders.py         # הזמנות + סטטוס + סנכרון
-│   │   │   │   ├── dashboard.py      # נתוני Dashboard + מגמות
-│   │   │   │   ├── analytics.py      # KPIs, המרה, ביצועים
-│   │   │   │   ├── financials.py     # ספר חשבונות + תשלומים
-│   │   │   │   ├── team.py           # ניהול צוות + הזמנות
-│   │   │   │   ├── messages.py       # שרשורי הודעות
-│   │   │   │   ├── notifications.py  # מרכז התראות
-│   │   │   │   ├── audit.py          # לוג פעילות
-│   │   │   │   ├── admin.py          # Super-admin endpoints
-│   │   │   │   ├── ingestion.py      # ייבוא CSV/JSON בקבוצות
-│   │   │   │   ├── webhooks.py       # Etsy webhooks
-│   │   │   │   ├── currency.py       # המרת מטבעות
-│   │   │   │   ├── tasks.py          # מעקב Celery tasks
-│   │   │   │   └── user_preferences.py # הגדרות משתמש
-│   │   │   │
-│   │   │   ├── models/               # 17 מודלי SQLAlchemy
-│   │   │   │   ├── tenancy.py        # Tenant, User, Membership, Shop
-│   │   │   │   ├── products.py       # Product
-│   │   │   │   ├── orders.py         # Order
-│   │   │   │   ├── oauth.py          # OAuthToken (מוצפן)
-│   │   │   │   ├── financials.py     # LedgerEntry, Expense, PaymentDetail
-│   │   │   │   ├── messaging.py      # MessageThread, Message
-│   │   │   │   ├── audit.py          # AuditLog
-│   │   │   │   ├── notifications.py  # Notification
-│   │   │   │   ├── ingestion.py      # IngestionBatch, IngestionRecord
-│   │   │   │   ├── webhooks.py       # WebhookEvent
-│   │   │   │   ├── user_preferences.py
-│   │   │   │   ├── exchange_rates.py
-│   │   │   │   └── api_keys.py
-│   │   │   │
-│   │   │   ├── services/             # 25 מודולי business logic
-│   │   │   │   ├── etsy_client.py    # Etsy API client (circuit breaker + rate limiting)
-│   │   │   │   ├── etsy_oauth.py     # Etsy OAuth PKCE flow
-│   │   │   │   ├── google_oauth.py   # Google OAuth flow
-│   │   │   │   ├── token_manager.py  # OAuth token refresh (single-flight)
-│   │   │   │   ├── encryption.py     # AES-GCM הצפנה לטוקנים
-│   │   │   │   ├── security.py       # JWT, bcrypt, cookies
-│   │   │   │   ├── email_service.py  # אימות, איפוס סיסמה
-│   │   │   │   ├── circuit_breaker.py # 3-state circuit breaker לEtsy API
-│   │   │   │   ├── rate_limiter.py   # Token bucket לEtsy API
-│   │   │   │   ├── financial_service.py # חישובי הכנסה ותשלום
-│   │   │   │   ├── currency_conversion.py # המרת מטבעות
-│   │   │   │   ├── analytics_service.py  # חישובי KPI
-│   │   │   │   ├── shop_sync_service.py  # סנכרון נתוני חנות
-│   │   │   │   ├── ingestion_service.py  # עיבוד CSV/JSON
-│   │   │   │   ├── audit_service.py      # רישום audit logs
-│   │   │   │   ├── notification_service.py
-│   │   │   │   └── adspower.py       # AdsPower browser automation
-│   │   │   │
-│   │   │   ├── worker/               # Celery infrastructure
-│   │   │   │   ├── celery_app.py     # הגדרות Celery
-│   │   │   │   ├── tasks.py          # הגדרות משימות async
-│   │   │   │   ├── scheduler.py      # Cron jobs (Celery Beat)
-│   │   │   │   └── services/
-│   │   │   │       └── imap_manager.py # IMAP email listener
-│   │   │   │
-│   │   │   └── core/
-│   │   │       ├── config.py         # ניהול כל משתני הסביבה
-│   │   │       ├── security.py       # JWT + הצפנה
-│   │   │       ├── database.py       # SQLAlchemy engine + session
-│   │   │       └── constants.py      # קבועים גלובליים
-│   │   │
-│   │   ├── alembic/                  # 50+ database migrations
-│   │   ├── tests/                    # Unit tests (pytest)
-│   │   ├── requirements.txt          # Python dependencies
-│   │   └── Dockerfile
+│   │   └── app/
+│   │       ├── api/endpoints/
+│   │       │   ├── dashboard.py      # ✅ עודכן — date filter, Etsy balance API
+│   │       │   ├── analytics.py      # timeseries endpoint
+│   │       │   └── ...
+│   │       ├── models/
+│   │       │   ├── products.py       # ✅ עודכן — views, num_favorers columns
+│   │       │   └── ...
+│   │       ├── services/
+│   │       │   ├── financial_service.py  # ✅ עודכן — SUM balance, negative support
+│   │       │   ├── etsy_client.py        # ✅ עודכן — get_shop_stats, get_payment_account
+│   │       │   └── ...
+│   │       └── worker/tasks/
+│   │           └── product_sync_tasks.py # ✅ עודכן — syncs views/num_favorers
 │   │
-│   ├── admin/                        # Admin Portal — Next.js (~114KB)
-│   │   ├── app/
-│   │   │   ├── login/                # כניסה עם ADMIN_PORTAL_SECRET
-│   │   │   ├── dashboard/            # סקירת מערכת
-│   │   │   ├── tenants/              # ניהול דיירים (Tenants)
-│   │   │   └── message-access/       # אישור גישה להודעות
-│   │   └── Dockerfile
-│   │
-│   └── worker/                       # Celery Worker (same image as api)
+│   └── admin/                        # Admin Portal — Next.js (~114KB)
 │
 ├── monitoring/
-│   ├── prometheus.yml                # הגדרות scraping
-│   └── grafana/                      # Dashboards + provisioning
+│   ├── prometheus.yml
+│   └── grafana/
 │
-├── docs/                             # תיעוד נוסף
-├── .github/workflows/                # CI/CD pipelines
-│
-├── docker-compose.yml                # 9 שירותים (development)
-├── docker-compose.prod.yml           # Production stack
-├── .env.example                      # תבנית משתני סביבה (50+)
-├── .env                              # ⚠️ קובץ מקומי בלבד — לא ב-git
-├── private.pem                       # RS256 private key
-├── public.pem                        # RS256 public key
+├── docker-compose.yml                # 9 שירותים
+├── docker-compose.prod.yml
+├── .env.example                      # תבנית משתני סביבה
+├── private.pem / public.pem          # RS256 JWT keys (לא ב-git)
 └── CLAUDE.md                         # ⬅️ הקובץ הזה
 ```
 
@@ -282,8 +195,8 @@ etsyauto-main/
 
 ### הפעלת הפרויקט
 ```bash
-# הפעלת כל השירותים (מהתיקייה etsyauto-main/)
-docker compose up -d
+# הפעלת כל השירותים
+docker compose -p etsyauto up -d
 
 # גישה:
 # Frontend:  http://localhost:3000
@@ -294,62 +207,42 @@ docker compose up -d
 # Adminer:   http://localhost:8081
 ```
 
+### בנייה מחדש (חשוב — Docker baked images, אין volume mounts!)
+```bash
+# ⚠️ שינויים בקוד לא נכנסים לקונטיינרים בלי rebuild!
+docker compose -p etsyauto up -d --build web     # rebuild frontend
+docker compose -p etsyauto up -d --build api     # rebuild backend
+docker compose -p etsyauto up -d --build         # rebuild הכל
+```
+
 ### בדיקת סטטוס
 ```bash
 docker compose ps
-docker compose logs -f api
-docker compose logs -f web
-docker compose logs -f worker
-```
-
-### עצירה ואיפוס
-```bash
-docker compose down          # עצור הכל
-docker compose down -v       # עצור + מחק נתונים
-docker compose up -d --build # בנה מחדש + הפעל
+docker logs etsy-api --tail 50
+docker logs etsy-web --tail 50
 ```
 
 ### Backend — FastAPI
 ```bash
 cd apps/api
-
-# הרצה מקומית
-uvicorn main:app --reload
-
-# בדיקות
-pytest
-pytest -v --tb=short
-
-# Migration חדש
-alembic revision -m "תיאור השינוי"
-alembic upgrade head          # החל migrations
-alembic downgrade -1          # בטל migration אחרון
-
-# כניסה ל-shell של API
-docker compose exec api bash
-```
-
-### Frontend — Next.js
-```bash
-cd apps/web
-
-npm run dev        # פיתוח עם hot reload
-npm run build      # בנייה לproduction
-npm start          # הרצת production build
-npm test           # בדיקות יחידה
-npm run test:e2e   # בדיקות E2E (Playwright)
+pytest                    # בדיקות
+alembic upgrade head      # החל migrations
+alembic stamp head        # סמן כ-up-to-date (לדלג על migrations)
 ```
 
 ### Database
 ```bash
-# כניסה ל-PostgreSQL
-docker compose exec db psql -U postgres -d etsy_platform
+docker exec etsy-db psql -U postgres -d etsy_platform
+# \dt — כל הטבלאות
+# \q  — יציאה
+```
 
-# פקודות שימושיות:
-\dt                    # כל הטבלאות
-\d table_name          # מבנה טבלה
-SELECT * FROM users;
-\q                     # יציאה
+### סנכרון מוצרים מ-Etsy (לעדכן views/num_favorers)
+```python
+# מתוך etsy-api container:
+from app.worker.tasks.product_sync_tasks import sync_products_from_etsy
+sync_products_from_etsy(shop_id=1, tenant_id=3, full_sync=True)
+sync_products_from_etsy(shop_id=2, tenant_id=3, full_sync=True)
 ```
 
 ---
@@ -358,155 +251,112 @@ SELECT * FROM users;
 
 ### ✅ Infrastructure (ינואר–פברואר 2026)
 - ✅ Docker Compose עם 9 שירותים מלאים
-- ✅ PostgreSQL 16 עם CITEXT extension
-- ✅ FastAPI backend + uvicorn
-- ✅ Next.js 14 עם App Router
-- ✅ Celery + Redis (worker, beat, imap)
-- ✅ JWT authentication RS256 (asymmetric)
-- ✅ 50+ database migrations עם Alembic
+- ✅ PostgreSQL 16 + Redis 7
+- ✅ FastAPI + Next.js 14 App Router
+- ✅ Celery + Beat + IMAP listener
+- ✅ JWT RS256 + HTTP-only cookies
+- ✅ 50+ Alembic migrations
 - ✅ Prometheus + Grafana monitoring
-- ✅ CI/CD pipelines ב-GitHub Actions
-- ✅ Sentry error tracking (frontend + backend)
+- ✅ CI/CD pipelines
+- ✅ Sentry (frontend + backend)
 
 ### ✅ Authentication & Tenancy
 - ✅ הרשמה + אישור אימייל
-- ✅ התחברות JWT (TTL 5 דקות) + refresh אוטומטי
-- ✅ Google OAuth 2.0
-- ✅ Etsy OAuth 2.0 PKCE flow
+- ✅ JWT TTL 5 דקות + refresh אוטומטי
+- ✅ **Google OAuth 2.0** — עובד ✓
+- ✅ **Etsy OAuth 2.0 PKCE** — עובד ✓
 - ✅ RBAC: Owner / Admin / Creator / Viewer
-- ✅ ניהול צוות + הזמנות בדואר
-- ✅ Multi-tenant עם בידוד מלא
-- ✅ Account lockout לאחר ניסיונות כשלון
-- ✅ שכחתי סיסמה + איפוס
+- ✅ Multi-tenant + team management
 
-### ✅ Dashboard & UI
-- ✅ Owner dashboard עם כרטיסי KPI
-- ✅ RTL מלא (עברית) בכל הממשק
-- ✅ תמה ירוקה (`--primary: #006d43`)
-- ✅ Sidebar עם בורר חנויות
-- ✅ טבלת הזמנות אחרונות
-- ✅ מדדי בריאות חנות
-- ✅ Responsive (mobile, tablet, desktop)
-- ✅ Notification center
+### ✅ Dashboard & UI (מעודכן מרץ 2026)
+- ✅ **כרטיסי KPI מעוצבים לפי mockup** — סדר RTL נכון, פורמט ₪, badge נכון
+- ✅ **יתרה נוכחית** — מחובר ל-Etsy Ledger API בזמן אמת
+- ✅ **יתרה שלילית** — מוצגת כ-`-₪9` עם `dir="ltr"` (לא `₪9-`)
+- ✅ **DateRangePicker** — 8 פרסטים בעברית (היום/אתמול/7 ימים/30 ימים/החודש/השנה/שנה שעברה/כל הזמנים)
+- ✅ **סינון תאריכים** — מסנן הזמנות ולקוחות לפי טווח
+- ✅ **TrendChart מלא** — LineChart עם KPI cards, period dropdown (יום/30 יום/חודשים), tabs (מכירות/צפיות/המרות), export CSV, legend
+- ✅ **צפיות בחנות** — מסונכרן מ-Etsy (7,691 צפיות: FigurineeHaven 6,719 + CoreBags 972)
+- ✅ RTL מלא בעברית
+- ✅ Responsive
 
 ### ✅ Etsy Integration
-- ✅ יצירת קישור OAuth לחיבור חנות
-- ✅ הצפנת טוקנים AES-GCM ואחסון מאובטח
-- ✅ חיבור / ניתוק חנות
-- ✅ סנכרון מוצרים מ-Etsy
+- ✅ OAuth PKCE flow — connect/disconnect חנויות
+- ✅ הצפנת טוקנים AES-GCM
+- ✅ סנכרון מוצרים (כולל `views`, `num_favorers`)
 - ✅ סנכרון הזמנות בזמן אמת
 - ✅ Rate limiting + circuit breaker
 - ✅ Etsy webhooks
-
-### ✅ Product Management
-- ✅ ייבוא CSV/JSON בקבוצות
-- ✅ CRUD מלא על מוצרים
-- ✅ סנכרון עם רישומי Etsy
-- ✅ AI content generation (כותרות, תיאורים, תגיות)
-- ✅ Policy compliance checker
-
-### ✅ Order Management
-- ✅ רשימת הזמנות עם סינונים
-- ✅ מעקב סטטוס הזמנה
-- ✅ סטטוס תשלום עם badges
-- ✅ מעקב משלוחים
-- ✅ פרטי לקוח
+- ✅ **Ledger API** — קריאת יתרת חשבון תשלומים
 
 ### ✅ Financial Tracking
-- ✅ ספר חשבונות (Ledger) — מכירות, עמלות, החזרות
-- ✅ דוחות הכנסות
-- ✅ מעקב הוצאות
+- ✅ ספר חשבונות (Ledger) מ-Etsy
+- ✅ **יתרה אמיתית** — SUM(amount) על כל רשומות הלדג'ר
+- ✅ **תמיכה ביתרה שלילית** (חוב ל-Etsy)
+- ✅ דוחות הכנסות + הוצאות
 - ✅ תמיכה במטבעות מרובים + המרה
-- ✅ מעקב סטטוס תשלום
 
-### ✅ Messaging System
-- ✅ הודעות Etsy דרך IMAP
-- ✅ ניהול שרשורים
-- ✅ שליחת תשובות ללקוחות
-- ✅ AdsPower integration לאוטומציה
-- ✅ ממשק אישור גישה להודעות (Admin)
+### ✅ Product / Order / Messaging
+- ✅ CRUD מלא על מוצרים + AI content generation
+- ✅ ייבוא CSV/JSON בקבוצות
+- ✅ מעקב הזמנות + סטטוס תשלום
+- ✅ ניהול הודעות Etsy דרך IMAP + AdsPower
 
 ### ✅ Admin Portal
 - ✅ Super-admin dashboard
-- ✅ ניהול tenants
-- ✅ ניהול משתמשים
-- ✅ בריאות מערכת
-- ✅ Audit logs viewer
+- ✅ ניהול tenants + משתמשים
+- ✅ Audit logs
 
 ---
 
 ## 6. מאיפה להמשיך
 
-### 🔴 עדיפות 1 — תיקון UI Dashboard (מיידי)
+### 🔴 עדיפות 1 — ידוע ולא תוקן
 
-#### Stat Cards
-- [ ] שנה תצוגת מטבע: `ILS70.65` → `₪70.65`
-- [ ] שנה פורמט badge: `+12%` → `12%+`
-- [ ] כוונן גדלי אייקונים לפי Mockup
-- [ ] בדוק padding ומרווחים
+#### יתרת Etsy (Billing vs Payment balance)
+- **בעיה**: Etsy מציגה יתרה אחת ב-UI שלהם (`-₪80.80`) אבל ה-API מחזיר יתרה אחרת (`-₪9.38`)
+- **סיבה**: Etsy UI כולל חיובי Prolist צבורים שעדיין לא נסגרו בלדג'ר. הendpoint `/payment-account` מחזיר 404 לחנות זו.
+- **אפשרויות**: (א) להשאיר כמות שהוא — הנתון נכון לפי ה-API; (ב) לאמוד pending prolist ולהוסיף לחישוב; (ג) לסנכרן לדג'ר אוטומטית כל שעה
+- **קבצים**: `apps/api/app/api/endpoints/dashboard.py`, `apps/api/app/services/financial_service.py`
 
-**קובץ**: `apps/web/app/dashboard/owner/page.tsx`
+### 🟡 עדיפות 2 — Features
 
-#### Weekly Trend Chart
-- [ ] בנה קומפוננט `TrendChart.tsx` מלא
-- [ ] כפתורי פילטר period: יום / 30 יום / חודשים
-- [ ] כפתורי קטגוריה: מכירות / צפיות / המרה
-- [ ] חיבור לendpoint אמיתי: `GET /api/dashboard/trends`
-- [ ] קו השוואה (dashed) לתקופה הקודמת
-- [ ] Tooltip עם ערך + אחוז שינוי
-
-**קובץ**: `apps/web/components/dashboard/TrendChart.tsx`
-
-#### Sidebar Updates
-- [ ] הסר פריט "שיווק" מהניווט
-- [ ] שנה כפתור "הוסף מוצר חדש" → "חבר חנות חדשה"
-- [ ] חיבור הכפתור: copy OAuth link ל-clipboard
-- [ ] פידבק חזותי (✓) אחרי העתקה
-
-**קובץ**: `apps/web/components/layout/Sidebar.tsx`
-
-### 🟡 עדיפות 2 — Backend Enhancements
-
-- [ ] צור endpoint: `GET /api/dashboard/trends`
-  - פרמטרים: `period` (day/30d/month), `category` (sales/views/conversion)
-  - תחזיר: נתונים יומיים לגרף + השוואה לתקופה קודמת
-- [ ] ודא שעובד: `GET /api/oauth/etsy/connect-link`
-
-### 🟢 עדיפות 3 — Features
-
-- [ ] Analytics dashboard מלא
-- [ ] דוחות פיננסיים מתקדמים
-- [ ] דוחות ביצועי מוצרים
+- [ ] Analytics dashboard מלא עם נתונים אמיתיים
+- [ ] דוחות פיננסיים מתקדמים (P&L, גרף הכנסות לאורך זמן)
+- [ ] ביצועי מוצרים (views, conversion per listing)
 - [ ] RTL בדיקה על מובייל
+- [ ] סנכרון לדג'ר אוטומטי כל שעה (Celery Beat task)
+
+### 🟢 עדיפות 3 — Nice to have
+
+- [ ] אפליקציית מובייל (React Native)
+- [ ] Keyword research engine
+- [ ] Multi-language support (אנגלית מלאה)
+- [ ] Bulk operations על מוצרים
 
 ---
 
 ## 7. באגים ובעיות ידועות
 
-### 🔴 קריטי
-אין כרגע.
-
 ### 🟡 בינוני
 
-**1. תצוגת מטבע בכרטיסי KPI**
-- בעיה: מוצג `ILS70.65` במקום `₪70.65`
-- מיקום: `apps/web/app/dashboard/owner/page.tsx` — StatCard component
-- סטטוס: ממתין לתיקון
+**1. פער ביתרת Etsy (Payment vs Billing)**
+- בעיה: אנחנו מציגים -₪9.38, Etsy מציגה -₪80.80
+- סיבה: Etsy UI כולל pending prolist (~₪71 / ~24 ימים × ₪3/יום) שלא ב-API
+- Etsy's own ledger API מאשר שהיתרה היא -₪9.38 — **הנתון שלנו נכון לפי ה-API**
+- מיקום: `financial_service.py` → `get_payout_estimate()`
+- סטטוס: ידוע, לא דחוף
 
-**2. Trend Chart לא מחובר לנתונים אמיתיים**
-- בעיה: הקומפוננט קיים אך מציג placeholder data
-- מיקום: `apps/web/components/dashboard/TrendChart.tsx`
-- סטטוס: בפיתוח
-
-**3. פורמט Badge לא תואם Mockup**
-- בעיה: מוצג `+12%` במקום `12%+`
-- מיקום: StatCard component
-- סטטוס: ממתין לתיקון
-
-### ✅ תוקן
-- ✅ רקע כרטיסים (היה לילך, תוקן לבן)
-- ✅ סדר grid ב-RTL (כרטיסים בסדר הנכון)
-- ✅ מיקום badge ב-RTL
+### ✅ תוקן בסשן הנוכחי (מרץ 2026)
+- ✅ פורמט מטבע: `ILS70` → `₪70`
+- ✅ Badge format: `+12%` → `12%+`
+- ✅ סדר כרטיסי KPI (RTL)
+- ✅ יתרה שלילית: `₪9-` → `-₪9` (dir="ltr")
+- ✅ חיבור יתרה לנתונים אמיתיים (היה ₪0)
+- ✅ צפיות בחנות — היה 0, עכשיו 7,691
+- ✅ DateRangePicker — חדש, 8 פרסטים
+- ✅ TrendChart — עוצב מחדש לרוחב מלא
+- ✅ Google OAuth — עובד
+- ✅ Etsy OAuth connect link — עובד
 
 ---
 
@@ -515,83 +365,63 @@ SELECT * FROM users;
 ### ארכיטקטורה
 
 **Monorepo (apps/)**
-- למה: CI/CD אחד, שיתוף קוד קל, ניהול פשוט
-- חסרון: לא ניתן deploy עצמאי לכל שירות
+- למה: CI/CD אחד, שיתוף קוד קל
 
-**Next.js 14 App Router** (ולא Pages Router)
-- למה: Server Components, ביצועים טובים יותר, מודרני
-- חסרון: עקומת למידה תלולה יותר
+**Docker baked images (ללא volume mounts)**
+- ⚠️ כל שינוי בקוד דורש `docker compose -p etsyauto up -d --build [service]`
+- הסיבה: production-like environment
 
-**FastAPI** (ולא Node.js)
-- למה: Python מתאים לAI/ML, async מהיר, Pydantic v2
-- חסרון: דורש ידע Python
+**יתרת Etsy — SUM(amount) לא last.balance**
+- ה-`balance` field על רשומות prolist מכיל ערכים שגויים
+- פתרון: `SUM(amount)` על כל רשומות הלדג'ר
+- מאומת: Etsy Ledger API מחזיר אותו ערך בדיוק (-938 cents)
 
-**PostgreSQL** (ולא NoSQL)
-- למה: קשרים מורכבים (users, shops, orders), ACID compliance
-- חסרון: Schema פחות גמיש
-
-**Celery + Redis**
-- למה: Etsy API איטי — צריך background jobs
-- חסרון: מורכבות נוספת עם message queue
+**RTL layout בכרטיסי KPI**
+- ב-RTL: first child = visual RIGHT
+- סדר HTML (ימין→שמאל): יתרה | הזמנות | לקוחות | צפיות
+- ערכים עם מינוס: `dir="ltr"` על ה-`<p>` של הערך
 
 ### עיצוב
 
 **תמה ירוקה (`#006d43`)**
-- למה: ירוק = כסף ו-growth, מקצועי
-- דחינו: כחול (שכיח מדי), כתום (Etsy כבר משתמשת)
-
 **Tailwind CSS** (ולא Material-UI)
-- למה: גמישות מלאה, אין bloat, שליטה מוחלטת
-- חסרון: צריך לכתוב יותר CSS
-
 **RTL מלא לעברית**
-- למה: קהל היעד — מוכרים ישראלים
-- מימוש: CSS grid עם `dir="rtl"`, first child = ימין
 
 ### אבטחה
 
-**JWT עם RS256 (asymmetric)**
-- למה: אפשר לאמת טוקנים בלי גישה לDB
-- חסרון: ניהול key pairs
-
-**HTTP-Only Cookies לאוטנטיקציה**
-- למה: הגנה מ-XSS
-- מימוש: credentials כלולים בכל API calls
-
-**AES-GCM להצפנת OAuth tokens**
-- למה: תקן תעשייה עם built-in authentication
-- מאוחסן ב: `app.models.oauth.OAuthToken.encrypted_token`
-
-**RBAC עם 4 תפקידים**
-- Owner, Admin, Creator, Viewer
-- מימוש: `apps/api/app/api/dependencies/rbac.py`
+**JWT RS256** — private/public.pem (לא ב-git)
+**HTTP-Only Cookies**
+**AES-GCM** להצפנת OAuth tokens
+**RBAC** — Owner / Admin / Creator / Viewer
 
 ---
 
 ## 9. כללים
 
 ### חובה
-1. **כל הקבצים חייבים להישאר בתוך תיקיית הפרויקט `etsyauto-main/` בלבד**
-   - ❌ אסור ליצור קבצים מחוץ לתיקייה
-   - ❌ אסור לשנות קבצים בתיקיות אחרות
-   - ✅ הכל בפנים
-
-2. **בסוף כל סשן עבודה — חובה לעדכן קובץ זה (CLAUDE.md)**
-   - עדכן "מה נעשה עד עכשיו"
-   - עדכן "מאיפה להמשיך"
-   - הוסף באגים חדשים אם יש
-   - הוסף החלטות חדשות אם יש
-
-3. **כל סשן = commit חדש עם הודעה ברורה**
+1. **כל הקבצים בתוך תיקיית הפרויקט בלבד**
+2. **בסוף כל סשן — חובה לעדכן CLAUDE.md**
+3. **כל סשן = commit חדש**
 
 ### Workflow בכל סשן
 ```
 1. קרא CLAUDE.md → הבן את ההקשר
-2. קרא את קבצי הקוד הרלוונטיים לפני שינוי
-3. בצע את השינויים הדרושים
-4. בדוק שהכל עובד
+2. קרא קבצי קוד רלוונטיים לפני שינוי
+3. שנה בworktree ואז העתק לתיקיית הפרויקט
+4. Rebuild: docker compose -p etsyauto up -d --build [service]
 5. עדכן CLAUDE.md
-6. Commit עם הודעה ברורה
+6. Commit + Push
+```
+
+### ⚠️ Docker workflow חשוב
+```bash
+# שינויים ב-web:
+Copy-Item worktree/apps/web/... → project/apps/web/...
+docker compose -p etsyauto up -d --build web
+
+# שינויים ב-api:
+Copy-Item worktree/apps/api/... → project/apps/api/...
+docker compose -p etsyauto up -d --build api
 ```
 
 ### פורמט Commit
@@ -600,15 +430,13 @@ SELECT * FROM users;
 
 - פירוט מה השתנה
 - למה השתנה
-
-Fixes: #123 (אם רלוונטי)
 ```
 
 ### ❌ לעולם לא
-- אל תמחק קבצים קיימים ללא סיבה ברורה
-- אל תחליף libraries בלי להשוות אלטרנטיבות
-- אל תשכח לעדכן CLAUDE.md בסוף סשן
-- אל תכתוב קוד לא מאובטח (SQL injection, XSS, וכד')
+- אל תמחק קבצים קיימים ללא סיבה
+- אל תשכח לעדכן CLAUDE.md
+- אל תכתוב קוד לא מאובטח
+- אל תעשה push של `.env` או `*.pem`
 
 ---
 
@@ -631,4 +459,13 @@ Fixes: #123 (אם רלוונטי)
 
 ---
 
-**עודכן**: 2026-03-26 | **הבא**: Priority 1 — תיקוני UI Dashboard
+## נתוני חנויות (Production)
+
+| חנות | Etsy Shop ID | יתרה נוכחית | מכירות 2026 | צפיות |
+|------|-------------|-------------|-------------|-------|
+| FigurineeHaven | 63042614 | -₪9.38 | ₪4,471 | 6,719 |
+| CoreBags | 62991131 | +₪68.03 | ₪655 | 972 |
+
+---
+
+**עודכן**: 2026-03-26 | **הבא**: Billing/Payment balance sync, Analytics מלא

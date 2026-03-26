@@ -680,6 +680,45 @@ class EtsyClient:
             params=params,
         )
 
+    async def get_shop_stats(
+        self,
+        shop_id: int,
+        etsy_shop_id: str,
+        start_date: Optional[int] = None,
+        end_date: Optional[int] = None,
+        granularity: str = "day",
+    ) -> Dict[str, Any]:
+        """
+        Get shop-level visit/stats data from Etsy (visits, orders, revenue).
+
+        Args:
+            shop_id: Internal shop ID
+            etsy_shop_id: Etsy shop ID
+            start_date: Unix timestamp for start of range (defaults to 30 days ago)
+            end_date: Unix timestamp for end of range (defaults to now)
+            granularity: "day" or "week" or "month"
+
+        Returns:
+            dict with visit, order, revenue stats per period
+        """
+        from datetime import datetime, timezone, timedelta
+        if end_date is None:
+            end_date = int(datetime.now(timezone.utc).timestamp())
+        if start_date is None:
+            start_date = int((datetime.now(timezone.utc) - timedelta(days=30)).timestamp())
+
+        params = {
+            "start_date": start_date,
+            "end_date": end_date,
+            "granularity": granularity,
+        }
+        return await self._make_request(
+            shop_id,
+            "GET",
+            f"/application/shops/{etsy_shop_id}/stats",
+            params=params,
+        )
+
     async def get_payment_by_receipt(
         self,
         shop_id: int,

@@ -250,6 +250,8 @@ def _extract_listing_product_data(
         "images": images,
         "price": price_cents,
         "quantity": quantity,
+        "views": listing.get("views") or 0,
+        "num_favorers": listing.get("num_favorers") or 0,
         "source": "etsy",
         "ingest_batch_id": f"etsy:{shop.etsy_shop_id}:{int(datetime.now(timezone.utc).timestamp())}",
     }

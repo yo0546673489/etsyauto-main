@@ -24,6 +24,7 @@ import {
   Tag,
 } from 'lucide-react';
 import { TrendChart } from '@/components/dashboard/TrendChart';
+import DateRangePicker, { computeRange, type DateRange } from '@/components/dashboard/DateRangePicker';
 
 function WelcomeHandler() {
   const searchParams = useSearchParams();
@@ -39,13 +40,13 @@ function WelcomeHandler() {
 }
 
 /**
- * Stat Card matching the mockup.
- * NOTE: page body is dir=rtl, so in every flex container:
- *   first child = visual RIGHT,  last child = visual LEFT
+ * Stat Card matching the mockup exactly.
+ * RTL layout: first child = visual RIGHT, last child = visual LEFT
  *
- * Card internal layout:
- *   flex justify-between row →  [icon circle | RIGHT]  [badge | LEFT]
- *   then label + value below (text-right)
+ * Card layout (visual, RTL):
+ *   top row: [badge on RIGHT]  [icon circle on LEFT]
+ *   center: label text
+ *   bottom: large value
  */
 interface StatCardProps {
   badge: string;
@@ -59,18 +60,18 @@ interface StatCardProps {
 
 function StatCard({ badge, badgeColor, icon: Icon, iconBg, iconColor, label, value }: StatCardProps) {
   return (
-    <div style={{ backgroundColor: '#ffffff' }} className="rounded-2xl px-6 pt-5 pb-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-white/80">
-      {/* RTL: first child = visual RIGHT = icon, second = visual LEFT = badge */}
+    <div className="bg-white rounded-2xl px-6 pt-5 pb-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-gray-100/80">
+      {/* RTL: first child = visual RIGHT = badge, second = visual LEFT = icon */}
       <div className="flex items-center justify-between mb-5">
-        <div className={cn('w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0', iconBg)}>
-          <Icon className={cn('w-[22px] h-[22px]', iconColor)} strokeWidth={1.8} />
-        </div>
         <span className={cn('text-sm font-semibold', badgeColor)}>
           {badge}
         </span>
+        <div className={cn('w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0', iconBg)}>
+          <Icon className={cn('w-[22px] h-[22px]', iconColor)} strokeWidth={1.8} />
+        </div>
       </div>
       <p className="text-sm text-gray-400 text-center mb-1.5">{label}</p>
-      <p className="text-[28px] leading-tight font-black text-gray-800 text-center">{value}</p>
+      <p className="text-[28px] leading-tight font-black text-gray-800 text-center" dir="ltr">{value}</p>
     </div>
   );
 }
@@ -84,6 +85,7 @@ function OwnerDashboardContent() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<DashboardOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState<DateRange>(() => computeRange('last30'));
 
   useEffect(() => {
     const checkOnboarding = async () => {
@@ -100,9 +102,10 @@ function OwnerDashboardContent() {
       try {
         setLoading(true);
         const shopOpts = selectedShopIds.length > 0 ? { shopIds: selectedShopIds } : { shopId: selectedShop?.id };
+        const dateOpts = { startDate: dateRange.startDate, endDate: dateRange.endDate };
         const [statsData, ordersData] = await Promise.all([
-          dashboardApi.getStats(shopOpts),
-          dashboardApi.getRecentOrders(5, shopOpts),
+          dashboardApi.getStats({ ...shopOpts, ...dateOpts }),
+          dashboardApi.getRecentOrders(5, { ...shopOpts, ...dateOpts }),
         ]);
         setStats(statsData);
         setRecentOrders(ordersData.orders || []);
@@ -113,7 +116,7 @@ function OwnerDashboardContent() {
       }
     };
     if (!showOnboarding) load();
-  }, [selectedShopIds, showOnboarding]);
+  }, [selectedShopIds, showOnboarding, dateRange]);
 
   const handleCompleteOnboarding = async (shopName: string, description: string | null) => {
     await onboardingApi.complete(shopName, description);
@@ -126,8 +129,6 @@ function OwnerDashboardContent() {
   };
 
   const shopName = selectedShop?.display_name || user?.name || '';
-  const today = new Date();
-  const dateStr = today.toLocaleDateString('he-IL', { day: 'numeric', month: 'long', year: 'numeric' });
 
   if (loading || !stats) {
     return (
@@ -137,11 +138,28 @@ function OwnerDashboardContent() {
     );
   }
 
-  const payoutAmount  = stats.available_for_payout || 0;
-  const payoutCurrency = stats.payout_currency || '₪';
-  const totalOrders   = stats.total_orders || 0;
+  const payoutAmount   = stats.available_for_payout || 0;
+  const payoutLabel    = stats.payout_label || 'יתרה נוכחית';
+  const totalOrders    = stats.total_orders || 0;
   const totalCustomers = stats.total_customers || 0;
-  const totalProducts = stats.total_products || stats.published_products || 0;
+  const totalViews     = stats.total_views || 0;
+  const todayVisits    = stats.today_visits || 0;
+  // Show today's visits if available (from Etsy stats API), otherwise total listing views
+  const shopViews      = todayVisits > 0 ? todayVisits : totalViews;
+  const changes        = stats.changes || { products: 0, customers: 0, orders: 0, listings: 0 };
+
+  // Format currency: always use ₪ symbol, support negative values
+  const formatCurrency = (amount: number) => {
+    const abs = Math.abs(amount);
+    const formatted = abs.toLocaleString('he-IL', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    return amount < 0 ? `-₪${formatted}` : `₪${formatted}`;
+  };
+
+  // Format large numbers: 1234 → 1.2k
+  const formatCompact = (n: number) => {
+    if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+    return `${n}`;
+  };
 
   return (
     <div className="max-w-[1300px] mx-auto space-y-6">
@@ -162,58 +180,54 @@ function OwnerDashboardContent() {
           </p>
         </div>
 
-        {/* 2nd = visual LEFT: Date card */}
-        <div className="bg-white rounded-2xl px-5 py-4 shadow-sm border border-gray-100 text-center min-w-[140px] flex-shrink-0">
-          <p className="text-xs text-gray-400 mb-1">התאריך היום</p>
-          <p className="text-sm font-bold text-gray-700">{dateStr}</p>
-        </div>
+        {/* 2nd = visual LEFT: Date Range Picker */}
+        <DateRangePicker value={dateRange} onChange={setDateRange} />
       </div>
 
       {/* ── 4 Stat Cards ──
-          RTL: first card = visual RIGHTMOST
-          Target (right→left): products | customers | orders | payout
-          → HTML order: products, customers, orders, payout
+          RTL: first in HTML = visual RIGHTMOST
+          Mockup order (right→left): תשלום ממתין | מספר הזמנות | לקוחות חדשים | צפיות בחנות
       */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* 1st in HTML = visual RIGHTMOST in RTL: צפיות בחנות */}
+        {/* 1st = RIGHTMOST: יתרה נוכחית */}
         <StatCard
-          badge={totalProducts > 999 ? `${(totalProducts / 1000).toFixed(1)}k` : `${totalProducts}`}
-          badgeColor="text-orange-400"
-          icon={Eye}
-          iconBg="bg-orange-100"
-          iconColor="text-orange-400"
-          label="צפיות בחנות"
-          value={totalProducts > 999 ? `${(totalProducts / 1000).toFixed(1)}k` : totalProducts}
+          badge={payoutAmount < 0 ? 'חוב' : 'עדכני'}
+          badgeColor={payoutAmount < 0 ? 'text-red-500' : 'text-[#006d43]'}
+          icon={Wallet}
+          iconBg={payoutAmount < 0 ? 'bg-red-50' : 'bg-green-50'}
+          iconColor={payoutAmount < 0 ? 'text-red-500' : 'text-[#006d43]'}
+          label={payoutLabel}
+          value={formatCurrency(payoutAmount)}
         />
-        {/* 2nd: לקוחות חדשים */}
+        {/* 2nd: מספר הזמנות */}
         <StatCard
-          badge={`${totalCustomers}+`}
+          badge={`${changes.orders}%+`}
+          badgeColor="text-[#006d43]"
+          icon={ShoppingBag}
+          iconBg="bg-green-50"
+          iconColor="text-[#006d43]"
+          label="מספר הזמנות"
+          value={totalOrders}
+        />
+        {/* 3rd: לקוחות חדשים */}
+        <StatCard
+          badge={`${changes.customers}+`}
           badgeColor="text-blue-400"
           icon={Users}
-          iconBg="bg-blue-100"
+          iconBg="bg-blue-50"
           iconColor="text-blue-400"
           label="לקוחות חדשים"
           value={totalCustomers}
         />
-        {/* 3rd: מספר הזמנות */}
+        {/* 4th = LEFTMOST: צפיות בחנות (cumulative listing views from Etsy) */}
         <StatCard
-          badge={`${totalOrders}+`}
-          badgeColor="text-teal-500"
-          icon={ShoppingBag}
-          iconBg="bg-teal-100"
-          iconColor="text-teal-500"
-          label="מספר הזמנות"
-          value={totalOrders}
-        />
-        {/* 4th in HTML = visual LEFTMOST in RTL: תשלום ממתין */}
-        <StatCard
-          badge="12%+"
-          badgeColor="text-[#006d43]"
-          icon={Wallet}
-          iconBg="bg-green-100"
-          iconColor="text-[#006d43]"
-          label="תשלום ממתין"
-          value={`${payoutCurrency}${payoutAmount.toLocaleString('he-IL', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`}
+          badge="מצטבר"
+          badgeColor="text-orange-400"
+          icon={Eye}
+          iconBg="bg-orange-50"
+          iconColor="text-orange-400"
+          label="צפיות בחנות"
+          value={formatCompact(shopViews)}
         />
       </div>
 
@@ -322,36 +336,8 @@ function OwnerDashboardContent() {
         </div>
       </div>
 
-      {/* ── Bottom Row: Shop Health + Real Trend Chart ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-
-        {/* 1st = visual RIGHT: Shop Health */}
-        <div className="lg:col-span-4 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-          <h3 className="text-lg font-black text-gray-800 text-right mb-6">בריאות החנות</h3>
-          <div className="space-y-5">
-            {[
-              { label: 'דירוג שירות ללקוחות', pct: 94 },
-              { label: 'מהירות משלוח',         pct: 88 },
-              { label: 'שביעות רצון מוצר',     pct: 98 },
-            ].map(({ label, pct }) => (
-              <div key={label}>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-bold text-gray-800">{pct}%</p>
-                  <p className="text-sm text-gray-700 font-medium">{label}</p>
-                </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-[#006d43] rounded-full" style={{ width: `${pct}%` }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* 2nd = visual LEFT: Real Interactive Trend Chart */}
-        <div className="lg:col-span-8">
-          <TrendChart />
-        </div>
-      </div>
+      {/* ── Bottom Row: Full-width Trend Chart ── */}
+      <TrendChart />
 
       <OnboardingModal
         isOpen={showOnboarding}
