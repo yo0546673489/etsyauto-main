@@ -1,0 +1,133 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(etsy_token_bucket_allowed_total[5m])",
+          "legendFormat": "allowed shop {{shop_id}}",
+          "refId": "A"
+        },
+        {
+          "expr": "rate(etsy_token_bucket_rejected_total[5m])",
+          "legendFormat": "rejected shop {{shop_id}}",
+          "refId": "B"
+        }
+      ],
+      "title": "Token Bucket Allowed vs Rejected (per shop)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 2,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(etsy_token_bucket_wait_ms_bucket[5m]))",
+          "legendFormat": "wait p95 ms",
+          "refId": "A"
+        }
+      ],
+      "title": "Token Bucket Wait Time p95",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "expr": "etsy_token_bucket_rejected_total",
+          "legendFormat": "shop {{shop_id}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Rate Limit Rejections by Shop",
+      "type": "timeseries"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "etsyauto",
+    "rate-limit"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "EtsyAuto Etsy Rate Limiting",
+  "uid": "etsyauto-rate-limiting",
+  "version": 1,
+  "weekStart": ""
+}

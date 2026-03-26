@@ -1,0 +1,97 @@
+{
+  "dashboard": {
+    "title": "Etsy Automation - Rate Limiting",
+    "tags": ["etsy", "rate-limit"],
+    "timezone": "utc",
+    "refresh": "10s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Token Bucket Utilization (%)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "(rate_limiter_token_bucket_size / rate_limiter_token_bucket_capacity) * 100",
+            "legendFormat": "Shop {{shop_id}} - {{bucket_type}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8}
+      },
+      {
+        "id": 2,
+        "title": "Token Acquisitions",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(rate_limiter_token_acquisitions_total{status=\"success\"}[5m])",
+            "legendFormat": "Success - Shop {{shop_id}}"
+          },
+          {
+            "expr": "rate(rate_limiter_token_acquisitions_total{status=\"rejected\"}[5m])",
+            "legendFormat": "Rejected - Shop {{shop_id}}"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8}
+      },
+      {
+        "id": 3,
+        "title": "Rate Limiter Backoffs",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(rate_limiter_backoff_total[5m])",
+            "legendFormat": "Shop {{shop_id}} - {{reason}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8}
+      },
+      {
+        "id": 4,
+        "title": "Etsy API Rate Limits (429s)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(etsy_api_rate_limits_total[5m])",
+            "legendFormat": "Shop {{shop_id}} - {{endpoint}}"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+        "alert": {
+          "name": "Etsy API Rate Limit Spike",
+          "conditions": [
+            {
+              "evaluator": {"params": [10], "type": "gt"},
+              "query": {"params": ["A", "5m", "now"]},
+              "type": "query"
+            }
+          ]
+        }
+      },
+      {
+        "id": 5,
+        "title": "Etsy API Call Duration",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(etsy_api_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{endpoint}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8}
+      },
+      {
+        "id": 6,
+        "title": "Etsy API Errors",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(etsy_api_errors_total[5m])",
+            "legendFormat": "Shop {{shop_id}} - {{error_type}}"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8}
+      }
+    ]
+  }
+}
+

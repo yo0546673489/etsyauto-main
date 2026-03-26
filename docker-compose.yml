@@ -1,0 +1,283 @@
+
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16-alpine
+    container_name: etsy-db
+    environment:
+      POSTGRES_DB: etsy_platform
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - etsy-network
+
+  # Redis (Celery Broker + Rate Limiting)
+  redis:
+    image: redis:7-alpine
+    container_name: etsy-redis
+    command: redis-server --appendonly yes
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - etsy-network
+
+  # FastAPI Backend
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: etsy-api
+    environment:
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-postgres}@db:5432/etsy_platform
+      TEST_DATABASE_URL: ${TEST_DATABASE_URL:-postgresql://postgres:${DB_PASSWORD:-postgres}@db:5432/etsy_platform}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      JWT_PRIVATE_KEY: ${JWT_PRIVATE_KEY}
+      JWT_PUBLIC_KEY: ${JWT_PUBLIC_KEY}
+      # Etsy API
+      ETSY_CLIENT_ID: ${ETSY_CLIENT_ID}
+      ETSY_CLIENT_SECRET: ${ETSY_CLIENT_SECRET}
+      ETSY_REDIRECT_URI: ${ETSY_REDIRECT_URI}
+      ETSY_RATE_LIMIT_CAPACITY: ${ETSY_RATE_LIMIT_CAPACITY:-100}
+      ETSY_RATE_LIMIT_REFILL_PER_SEC: ${ETSY_RATE_LIMIT_REFILL_PER_SEC:-0.5}
+      # Monitoring
+      SENTRY_DSN: ${SENTRY_DSN}
+      # Security
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      ADMIN_PORTAL_SECRET: ${ADMIN_PORTAL_SECRET:-}
+      # Email Configuration
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME}
+      FRONTEND_URL: ${FRONTEND_URL}
+      # Auth Configuration
+      EMAIL_VERIFICATION_REQUIRED: ${EMAIL_VERIFICATION_REQUIRED}
+      VERIFICATION_TOKEN_EXPIRY_HOURS: ${VERIFICATION_TOKEN_EXPIRY_HOURS}
+      RESET_TOKEN_EXPIRY_HOURS: ${RESET_TOKEN_EXPIRY_HOURS}
+      MAX_LOGIN_ATTEMPTS: ${MAX_LOGIN_ATTEMPTS}
+      ACCOUNT_LOCKOUT_MINUTES: ${ACCOUNT_LOCKOUT_MINUTES}
+      REMEMBER_ME_TTL_DAYS: ${REMEMBER_ME_TTL_DAYS}
+      # Google OAuth
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+      # Resend Email
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      EMAIL_FROM: ${EMAIL_FROM}
+      USE_RESEND: ${USE_RESEND:-true}
+      DEBUG_LOG_PATH: /debug-logs/debug.log
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/api:/app
+      - ../.cursor:/debug-logs
+    command: uvicorn main:app --host 0.0.0.0 --port 8080 --reload
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - etsy-network
+
+  # Celery Worker
+  worker:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: etsy-worker
+    environment:
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-postgres}@db:5432/etsy_platform
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      # Etsy API
+      ETSY_CLIENT_ID: ${ETSY_CLIENT_ID}
+      ETSY_CLIENT_SECRET: ${ETSY_CLIENT_SECRET}
+      ETSY_REDIRECT_URI: ${ETSY_REDIRECT_URI}
+      # Security
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    volumes:
+      - ./apps/api:/app
+      - ../.cursor:/debug-logs
+    command: celery -A app.worker.celery_app worker --loglevel=info --concurrency=4
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    networks:
+      - etsy-network
+
+  # IMAP Listener (Etsy notification emails)
+  imap_listener:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: etsy-imap-listener
+    environment:
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-postgres}@db:5432/etsy_platform
+      REDIS_URL: redis://redis:6379/0
+      API_INTERNAL_URL: http://api:8080
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET:-changeme-internal-secret}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./apps/api:/app
+    command: python -m app.worker.services.imap_manager
+    restart: always
+    networks:
+      - etsy-network
+
+  # Celery Beat (Scheduler)
+  beat:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: etsy-beat
+    environment:
+      DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-postgres}@db:5432/etsy_platform
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+    depends_on:
+      - redis
+      - worker
+    command: celery -A app.worker.celery_app beat --loglevel=info
+    networks:
+      - etsy-network
+
+  # Database Admin Tool (Adminer)
+  # Accessible via nginx at /adminer
+  adminer:
+    image: adminer:latest
+    container_name: etsy-adminer
+    ports:
+      - "127.0.0.1:8081:8080"  # Expose on localhost for nginx proxy
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - etsy-network
+
+  # Next.js Frontend
+  # NEXT_PUBLIC_API_URL must be empty so browser uses same-origin; Next.js rewrites /api/* to backend
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ""
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+        API_INTERNAL_URL: http://api:8080
+    container_name: etsy-web
+    environment:
+      HOSTNAME: "0.0.0.0"
+      NODE_OPTIONS: "--max-old-space-size=1024"
+      NEXT_PUBLIC_API_URL: ""
+      API_INTERNAL_URL: http://api:8080
+      NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    networks:
+      - etsy-network
+
+  # Super-admin UI (Next.js). Proxies /api/admin/* → api:8080. Login password = ADMIN_PORTAL_SECRET in .env (≥16 chars).
+  admin:
+    build:
+      context: ./apps/admin
+      dockerfile: Dockerfile
+    container_name: etsy-admin
+    environment:
+      NODE_OPTIONS: "--max-old-space-size=512"
+      API_INTERNAL_URL: http://api:8080
+    ports:
+      - "3002:3002"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - etsy-network
+
+  # Prometheus (Metrics)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: etsy-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - etsy-network
+
+  # Grafana (Dashboards)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: etsy-grafana
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - etsy-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  etsy-network:
+    name: etsy-network
+    driver: bridge

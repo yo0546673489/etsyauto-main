@@ -1,0 +1,179 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: etsy-db
+    restart: always
+    environment:
+      POSTGRES_DB: etsy_platform
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - etsy-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: etsy-redis
+    restart: always
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - etsy-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: etsy-api
+    restart: always
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@db:5432/etsy_platform
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - etsy-network
+    command: uvicorn main:app --host 0.0.0.0 --port 8080 --workers 4
+
+  worker:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: etsy-worker
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@db:5432/etsy_platform
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+      - api
+    networks:
+      - etsy-network
+    command: celery -A app.worker.celery_app worker --loglevel=info --concurrency=4
+
+  beat:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    container_name: etsy-beat
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@db:5432/etsy_platform
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+      - api
+    networks:
+      - etsy-network
+    command: celery -A app.worker.celery_app beat --loglevel=info
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
+    container_name: etsy-web
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    networks:
+      - etsy-network
+    environment:
+      - NODE_ENV=production
+
+  # Super-admin portal (set ADMIN_PORTAL_SECRET in .env; login = same value)
+  admin:
+    build:
+      context: ./apps/admin
+      dockerfile: Dockerfile
+    container_name: etsy-admin
+    restart: always
+    ports:
+      - "3002:3002"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - etsy-network
+    environment:
+      - NODE_ENV=production
+      - API_INTERNAL_URL=http://api:8080
+
+  adminer:
+    image: adminer:latest
+    container_name: etsy-adminer
+    restart: always
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - etsy-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: etsy-nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - api
+      - web
+      - admin
+      - adminer
+    networks:
+      - etsy-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  etsy-network:
+    name: etsy-network
+    driver: bridge

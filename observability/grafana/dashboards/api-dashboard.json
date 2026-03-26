@@ -1,0 +1,87 @@
+{
+  "dashboard": {
+    "title": "Etsy Automation - API Metrics",
+    "tags": ["etsy", "api", "http"],
+    "timezone": "utc",
+    "refresh": "10s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Request Rate (req/s)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total[5m])",
+            "legendFormat": "{{method}} {{endpoint}} - {{status_code}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8}
+      },
+      {
+        "id": 2,
+        "title": "Request Latency (p95)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{endpoint}}"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8}
+      },
+      {
+        "id": 3,
+        "title": "Error Rate by Status Code",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{status_code=~\"4..\"}[5m])",
+            "legendFormat": "4xx - {{endpoint}}"
+          },
+          {
+            "expr": "rate(http_requests_total{status_code=~\"5..\"}[5m])",
+            "legendFormat": "5xx - {{endpoint}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8}
+      },
+      {
+        "id": 4,
+        "title": "Rate Limit Hits (429 responses)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(http_rate_limit_hits_total[5m])",
+            "legendFormat": "{{endpoint}} - Shop {{shop_id}}"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8}
+      },
+      {
+        "id": 5,
+        "title": "Requests In Progress",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "http_requests_in_progress",
+            "legendFormat": "{{method}} {{endpoint}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 16, "w": 12, "h": 8}
+      },
+      {
+        "id": 6,
+        "title": "Error Distribution",
+        "type": "piechart",
+        "targets": [
+          {
+            "expr": "sum by (error_type) (rate(http_errors_total[5m]))",
+            "legendFormat": "{{error_type}}"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 16, "w": 12, "h": 8}
+      }
+    ]
+  }
+}
+

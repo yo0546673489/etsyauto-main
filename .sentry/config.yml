@@ -1,0 +1,186 @@
+# Sentry Configuration
+# https://docs.sentry.io/product/sentry-basics/concepts/
+
+# Project Settings
+project: etsy-automation
+organization: your-org
+
+# Environment
+environment: production
+
+# Issue Grouping
+grouping_config: default
+
+# Issue Templates
+# Link issue templates to specific error patterns
+issue_templates:
+  - pattern: "oauth"
+    template: issue-templates/OAUTH_ERROR.md
+    auto_assign: backend-team
+    labels:
+      - oauth
+      - critical
+      - auth
+    links:
+      - name: "OAuth Runbook"
+        url: "https://github.com/your-org/etsy-automation/blob/main/runbooks/OAUTH_FAILURE.md"
+      - name: "Grafana OAuth Dashboard"
+        url: "http://localhost:3001/d/oauth-dashboard"
+  
+  - pattern: "rate_limit|429|RateLimitError"
+    template: issue-templates/RATE_LIMIT_ERROR.md
+    auto_assign: backend-team
+    labels:
+      - rate-limit
+      - api
+      - critical
+    links:
+      - name: "Rate Limit Runbook"
+        url: "https://github.com/your-org/etsy-automation/blob/main/runbooks/RATE_LIMIT_429_STORM.md"
+      - name: "Grafana Rate Limiter Dashboard"
+        url: "http://localhost:3001/d/rate-limiter-dashboard"
+  
+  - pattern: "celery|worker|queue"
+    template: issue-templates/WORKER_ERROR.md
+    auto_assign: devops-team
+    labels:
+      - worker
+      - celery
+      - queue
+    links:
+      - name: "Queue Saturation Runbook"
+        url: "https://github.com/your-org/etsy-automation/blob/main/runbooks/QUEUE_SATURATION.md"
+      - name: "Grafana Worker Dashboard"
+        url: "http://localhost:3001/d/worker-dashboard"
+
+# Alert Rules
+alert_rules:
+  - name: "OAuth Failures Spike"
+    conditions:
+      - error_count > 10
+      - time_window: 5m
+      - filter: "error.type:OAuthError"
+    actions:
+      - notify: critical-alerts-channel
+      - auto_assign: backend-team
+  
+  - name: "Rate Limit Storm"
+    conditions:
+      - error_count > 50
+      - time_window: 5m
+      - filter: "http.status_code:429"
+    actions:
+      - notify: critical-alerts-channel
+      - auto_assign: backend-team
+  
+  - name: "Worker Queue Saturation"
+    conditions:
+      - metric: celery_queue_depth
+      - threshold: "> 500"
+    actions:
+      - notify: devops-channel
+      - auto_assign: devops-team
+
+# Data Scrubbing
+data_scrubbing:
+  enabled: true
+  scrub_data: true
+  scrub_ip_address: true
+  sensitive_fields:
+    - password
+    - token
+    - secret
+    - api_key
+    - access_token
+    - refresh_token
+    - authorization
+    - cookie
+    - csrf
+    - jwt
+    - key
+    - apikey
+    - auth
+    - client_secret
+    - private_key
+    - encryption_key
+    - bearer
+    - credentials
+  pii_fields:
+    - email
+    - phone
+    - ssn
+    - credit_card
+    - card_number
+    - cvv
+    - address
+    - first_name
+    - last_name
+    - full_name
+    - name
+    - ip_address
+    - user_agent
+
+# Performance Monitoring
+performance:
+  traces_sample_rate: 0.1
+  profiles_sample_rate: 0.1
+  transaction_max_duration: 30s
+
+# Release Tracking
+releases:
+  auto_create: true
+  associate_commits: true
+  deploy_notifications: true
+
+# Integrations
+integrations:
+  slack:
+    enabled: true
+    workspace: your-workspace
+    channel: "#alerts-critical"
+  
+  github:
+    enabled: true
+    organization: your-org
+    repository: etsy-automation
+  
+  jira:
+    enabled: false
+  
+  pagerduty:
+    enabled: false
+
+# Notification Rules
+notifications:
+  - type: issue_alert
+    conditions:
+      - severity: critical
+    channels:
+      - slack: "#alerts-critical"
+      - email: oncall@example.com
+  
+  - type: issue_alert
+    conditions:
+      - severity: warning
+      - frequency: "> 10/hour"
+    channels:
+      - slack: "#alerts-warning"
+
+# Retention
+retention:
+  events: 90d
+  performance_data: 30d
+  
+# Quotas
+quotas:
+  max_events_per_minute: 1000
+  max_api_calls_per_minute: 100
+
+---
+# This configuration is used to:
+# 1. Link Sentry issues to appropriate runbooks
+# 2. Auto-assign issues to correct teams
+# 3. Configure data scrubbing and PII protection
+# 4. Setup alerting and notification routing
+# 5. Integrate with external services (Slack, GitHub, etc.)
+

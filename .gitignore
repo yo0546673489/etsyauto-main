@@ -1,0 +1,102 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.production
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+# But allow Next.js lib directories
+!apps/web/lib/
+!apps/admin/lib/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+venv/
+ENV/
+env/
+.venv
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.npm
+.next/
+out/
+.vercel
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+coverage/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+postgres_data/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+*_logs.txt
+api_logs*.txt
+latest_api_logs.txt
+
+# Uploads
+apps/api/uploads/
+
+# Monitoring
+prometheus_data/
+grafana_data/
+
+# Docker
+docker-compose.override.yml
+
+# Alembic (keep alembic.ini - uses env vars, no secrets)
+# Backup files
+backup.sql
+*.sql.backup
+*-backup.*
+*_backup.*
+
+# Windows reserved names (NUL, CON, PRN, etc.)
+NUL
+CON
+PRN
+
+# Misc
+.cache/
+tmp/
+temp/

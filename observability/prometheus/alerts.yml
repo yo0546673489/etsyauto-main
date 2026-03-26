@@ -1,0 +1,308 @@
+groups:
+  - name: api_alerts
+    interval: 30s
+    rules:
+      - alert: HighErrorRate
+        expr: |
+          (rate(http_requests_total{status_code=~"5.."}[5m]) / rate(http_requests_total[5m])) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "High API error rate (>5%)"
+          description: "API endpoint {{$labels.endpoint}} has {{$value | humanizePercentage}} error rate"
+      
+      - alert: HighRateLimitHits
+        expr: rate(http_rate_limit_hits_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High rate limit hits (429 responses)"
+          description: "Endpoint {{$labels.endpoint}} for shop {{$labels.shop_id}} is hitting rate limits at {{$value | humanize}} req/s"
+      
+      - alert: SlowAPIResponse
+        expr: |
+          histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 5
+        for: 10m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Slow API responses (p95 > 5s)"
+          description: "Endpoint {{$labels.endpoint}} has p95 latency of {{$value}}s"
+
+  - name: oauth_alerts
+    interval: 30s
+    rules:
+      - alert: OAuthTokenRefreshFailures
+        expr: rate(oauth_token_refresh_failures_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: critical
+          component: oauth
+        annotations:
+          summary: "OAuth token refresh failures above threshold"
+          description: "Shop {{$labels.shop_id}} has {{$value | humanize}} token refresh failures/s (error: {{$labels.error_type}})"
+      
+      - alert: TokenRefreshHighLatency
+        expr: |
+          histogram_quantile(0.95, rate(oauth_token_refresh_duration_seconds_bucket[5m])) > 10
+        for: 10m
+        labels:
+          severity: warning
+          component: oauth
+        annotations:
+          summary: "OAuth token refresh taking too long (p95 > 10s)"
+          description: "Shop {{$labels.shop_id}} token refresh p95 latency: {{$value}}s"
+      
+      - alert: TokensExpiringSoon
+        expr: oauth_tokens_expiring_soon > 5
+        for: 1h
+        labels:
+          severity: warning
+          component: oauth
+        annotations:
+          summary: "Multiple OAuth tokens expiring soon"
+          description: "{{$value}} tokens expiring within 24 hours for tenant {{$labels.tenant_id}}"
+
+  - name: worker_alerts
+    interval: 30s
+    rules:
+      - alert: HighQueueDepth
+        expr: celery_queue_depth > 100
+        for: 10m
+        labels:
+          severity: warning
+          component: worker
+        annotations:
+          summary: "Celery queue depth above threshold"
+          description: "Queue {{$labels.queue_name}} has {{$value}} pending tasks"
+      
+      - alert: CriticalQueueDepth
+        expr: celery_queue_depth > 500
+        for: 5m
+        labels:
+          severity: critical
+          component: worker
+        annotations:
+          summary: "Celery queue depth critically high"
+          description: "Queue {{$labels.queue_name}} has {{$value}} pending tasks - workers may be down"
+      
+      - alert: HighTaskFailureRate
+        expr: |
+          (rate(celery_task_failed_total[5m]) / rate(celery_task_started_total[5m])) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+          component: worker
+        annotations:
+          summary: "High task failure rate (>10%)"
+          description: "Task {{$labels.task_name}} has {{$value | humanizePercentage}} failure rate"
+      
+      - alert: ExcessiveTaskRetries
+        expr: rate(celery_task_retried_total[5m]) > 10
+        for: 10m
+        labels:
+          severity: warning
+          component: worker
+        annotations:
+          summary: "Excessive task retries"
+          description: "Task {{$labels.task_name}} is retrying at {{$value | humanize}} retries/s"
+      
+      - alert: DeadLetterQueueGrowth
+        expr: increase(celery_dead_letter_queue_depth[10m]) > 0
+        for: 5m
+        labels:
+          severity: critical
+          component: worker
+        annotations:
+          summary: "Dead letter queue growing"
+          description: "Dead letter queue has grown to {{$value}} tasks - manual intervention required"
+      
+      - alert: NoActiveWorkers
+        expr: celery_active_workers == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: worker
+        annotations:
+          summary: "No active Celery workers"
+          description: "All Celery workers appear to be down"
+      
+      - alert: SlowTaskExecution
+        expr: |
+          histogram_quantile(0.95, rate(celery_task_duration_seconds_bucket[5m])) > 300
+        for: 15m
+        labels:
+          severity: warning
+          component: worker
+        annotations:
+          summary: "Tasks taking too long to execute"
+          description: "Task {{$labels.task_name}} p95 duration: {{$value}}s"
+
+  - name: rate_limiter_alerts
+    interval: 30s
+    rules:
+      - alert: EtsyAPIRateLimitSpike
+        expr: rate(etsy_api_rate_limits_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: critical
+          component: rate_limiter
+        annotations:
+          summary: "Etsy API rate limit spike (429 responses)"
+          description: "Shop {{$labels.shop_id}} hitting Etsy rate limits at {{$value | humanize}} hits/s on {{$labels.endpoint}}"
+      
+      - alert: TokenBucketExhausted
+        expr: rate_limiter_token_bucket_size == 0
+        for: 5m
+        labels:
+          severity: warning
+          component: rate_limiter
+        annotations:
+          summary: "Token bucket exhausted"
+          description: "Shop {{$labels.shop_id}} token bucket ({{$labels.bucket_type}}) is empty"
+      
+      - alert: HighRateLimiterRejections
+        expr: |
+          (rate(rate_limiter_token_acquisitions_total{status="rejected"}[5m]) / rate(rate_limiter_token_acquisitions_total[5m])) > 0.2
+        for: 10m
+        labels:
+          severity: warning
+          component: rate_limiter
+        annotations:
+          summary: "High rate limiter rejection rate (>20%)"
+          description: "Shop {{$labels.shop_id}} has {{$value | humanizePercentage}} token acquisition rejections"
+
+  - name: listing_job_alerts
+    interval: 30s
+    rules:
+      - alert: HighPolicyBlockRate
+        expr: rate(listing_jobs_policy_blocked_total[5m]) > 5
+        for: 10m
+        labels:
+          severity: warning
+          component: listings
+        annotations:
+          summary: "High listing policy block rate"
+          description: "{{$value | humanize}} listings/s being blocked for policy violations ({{$labels.policy_flag}})"
+      
+      - alert: ListingJobFailures
+        expr: rate(listing_jobs_completed_total{status="failed"}[5m]) > 2
+        for: 10m
+        labels:
+          severity: warning
+          component: listings
+        annotations:
+          summary: "High listing job failure rate"
+          description: "Shop {{$labels.shop_id}} has {{$value | humanize}} listing job failures/s"
+
+  - name: ai_generation_alerts
+    interval: 30s
+    rules:
+      - alert: AIGenerationFailures
+        expr: rate(ai_generation_failures_total[5m]) > 2
+        for: 10m
+        labels:
+          severity: warning
+          component: ai
+        annotations:
+          summary: "AI generation failures"
+          description: "Provider {{$labels.provider}} has {{$value | humanize}} failures/s ({{$labels.error_type}})"
+      
+      - alert: SlowAIGeneration
+        expr: |
+          histogram_quantile(0.95, rate(ai_generation_duration_seconds_bucket[5m])) > 30
+        for: 15m
+        labels:
+          severity: warning
+          component: ai
+        annotations:
+          summary: "Slow AI generation (p95 > 30s)"
+          description: "Provider {{$labels.provider}} p95 latency: {{$value}}s"
+      
+      - alert: HighPolicyViolationRate
+        expr: |
+          (rate(ai_generation_policy_violations_total[5m]) / rate(ai_generation_requests_total[5m])) > 0.3
+        for: 15m
+        labels:
+          severity: warning
+          component: ai
+        annotations:
+          summary: "High AI-generated content policy violation rate (>30%)"
+          description: "Tenant {{$labels.tenant_id}} has {{$value | humanizePercentage}} violation rate"
+
+  - name: ingestion_alerts
+    interval: 30s
+    rules:
+      - alert: IngestionBatchFailures
+        expr: rate(product_ingestion_batches_total{status="failed"}[5m]) > 1
+        for: 10m
+        labels:
+          severity: warning
+          component: ingestion
+        annotations:
+          summary: "Product ingestion batch failures"
+          description: "Shop {{$labels.shop_id}} has {{$value | humanize}} batch failures/s"
+      
+      - alert: SlowIngestion
+        expr: |
+          histogram_quantile(0.95, rate(product_ingestion_duration_seconds_bucket[5m])) > 600
+        for: 15m
+        labels:
+          severity: warning
+          component: ingestion
+        annotations:
+          summary: "Slow product ingestion (p95 > 10min)"
+          description: "Shop {{$labels.shop_id}} ingestion p95 duration: {{$value}}s"
+
+  - name: circuit_breaker_alerts
+    interval: 30s
+    rules:
+      - alert: CircuitBreakerOpen
+        expr: circuit_breaker_state{state="open"} == 1
+        for: 1m
+        labels:
+          severity: critical
+          component: circuit_breaker
+        annotations:
+          summary: "Circuit breaker open for shop"
+          description: "Shop {{$labels.shop_id}} circuit breaker is OPEN - Etsy API calls blocked. Consecutive failures: {{$labels.failures}}"
+
+      - alert: CircuitBreakerHalfOpen
+        expr: circuit_breaker_state{state="half_open"} == 1
+        for: 5m
+        labels:
+          severity: warning
+          component: circuit_breaker
+        annotations:
+          summary: "Circuit breaker in half-open state"
+          description: "Shop {{$labels.shop_id}} circuit breaker is HALF-OPEN for >5m - may indicate recurring Etsy API issues"
+
+  - name: database_alerts
+    interval: 30s
+    rules:
+      - alert: HighDatabaseConnections
+        expr: database_connections_active > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "High number of active database connections"
+          description: "{{$value}} active connections (limit may be reached soon)"
+      
+      - alert: SlowDatabaseQueries
+        expr: |
+          histogram_quantile(0.95, rate(database_query_duration_seconds_bucket[5m])) > 1
+        for: 10m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Slow database queries (p95 > 1s)"
+          description: "Query type {{$labels.query_type}} p95 latency: {{$value}}s"
+

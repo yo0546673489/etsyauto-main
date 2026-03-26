@@ -1,0 +1,152 @@
+{
+  "dashboard": {
+    "title": "Etsy Automation - Workers & Jobs",
+    "tags": ["etsy", "celery", "workers"],
+    "timezone": "utc",
+    "refresh": "10s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Task Execution Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(celery_task_succeeded_total[5m])",
+            "legendFormat": "Success - {{task_name}}"
+          },
+          {
+            "expr": "rate(celery_task_failed_total[5m])",
+            "legendFormat": "Failed - {{task_name}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8}
+      },
+      {
+        "id": 2,
+        "title": "Task Duration (p95)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(celery_task_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{task_name}}"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8}
+      },
+      {
+        "id": 3,
+        "title": "Queue Depth",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "celery_queue_depth",
+            "legendFormat": "Queue: {{queue_name}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+        "alert": {
+          "name": "High Queue Depth",
+          "conditions": [
+            {
+              "evaluator": {"params": [100], "type": "gt"},
+              "query": {"params": ["A", "5m", "now"]},
+              "type": "query"
+            }
+          ]
+        }
+      },
+      {
+        "id": 4,
+        "title": "Task Retry Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(celery_task_retried_total[5m])",
+            "legendFormat": "{{task_name}} - Retry {{retry_count}}"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8}
+      },
+      {
+        "id": 5,
+        "title": "Active Workers",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "celery_active_workers"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 16, "w": 6, "h": 4}
+      },
+      {
+        "id": 6,
+        "title": "Active Tasks",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "celery_active_tasks"
+          }
+        ],
+        "gridPos": {"x": 6, "y": 16, "w": 6, "h": 4}
+      },
+      {
+        "id": 7,
+        "title": "Dead Letter Queue",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "celery_dead_letter_queue_depth"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 16, "w": 6, "h": 4},
+        "alert": {
+          "name": "Dead Letter Queue Growth",
+          "conditions": [
+            {
+              "evaluator": {"params": [1], "type": "gt"},
+              "query": {"params": ["A", "5m", "now"]},
+              "type": "query"
+            }
+          ]
+        }
+      },
+      {
+        "id": 8,
+        "title": "Task Failure Rate (%)",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "rate(celery_task_failed_total[5m]) / rate(celery_task_started_total[5m]) * 100",
+            "legendFormat": "Failure Rate %"
+          }
+        ],
+        "gridPos": {"x": 18, "y": 16, "w": 6, "h": 4}
+      },
+      {
+        "id": 9,
+        "title": "Listing Jobs - Policy Blocks",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(listing_jobs_policy_blocked_total[5m])",
+            "legendFormat": "{{policy_flag}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 20, "w": 12, "h": 8}
+      },
+      {
+        "id": 10,
+        "title": "AI Generation Metrics",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(ai_generation_requests_total[5m])",
+            "legendFormat": "{{provider}}"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 20, "w": 12, "h": 8}
+      }
+    ]
+  }
+}
+

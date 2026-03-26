@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'etsy-api'
+    static_configs:
+      - targets: ['api:8080']
+        labels:
+          service: 'api'
+
+  - job_name: 'etsy-worker'
+    static_configs:
+      - targets: ['worker:9090']
+        labels:
+          service: 'worker'
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'node'
+    static_configs:
+      - targets: ['node-exporter:9100']

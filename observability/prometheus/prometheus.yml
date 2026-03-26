@@ -1,0 +1,66 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'etsy-automation'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "alerts.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Scrape API metrics
+  - job_name: 'etsy-api'
+    metrics_path: '/api/metrics'
+    static_configs:
+      - targets: ['etsy-api:8080']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'etsy-api'
+
+  # Scrape Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Scrape Node Exporter (host metrics)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+
+  # Scrape cAdvisor (container metrics)
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+  # Scrape Celery Worker metrics
+  - job_name: 'celery-worker'
+    static_configs:
+      - targets: ['celery-worker:9090']
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        replacement: 'celery-worker'
+
+  # Scrape PostgreSQL Exporter (if added)
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    # Optional: Comment out if postgres-exporter not deployed
+
+  # Scrape Redis Exporter (if added)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+    # Optional: Comment out if redis-exporter not deployed
+

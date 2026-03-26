@@ -1,0 +1,93 @@
+{
+  "dashboard": {
+    "title": "Etsy Automation - OAuth & Auth",
+    "tags": ["etsy", "oauth", "auth"],
+    "timezone": "utc",
+    "refresh": "10s",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Token Refresh Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(oauth_token_refresh_total[5m])",
+            "legendFormat": "Shop {{shop_id}} - {{status}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8}
+      },
+      {
+        "id": 2,
+        "title": "Token Refresh Failures",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(oauth_token_refresh_failures_total[5m])",
+            "legendFormat": "Shop {{shop_id}} - {{error_type}}"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+        "alert": {
+          "name": "OAuth Token Refresh Failures",
+          "conditions": [
+            {
+              "evaluator": {"params": [5], "type": "gt"},
+              "query": {"params": ["A", "5m", "now"]},
+              "type": "query"
+            }
+          ]
+        }
+      },
+      {
+        "id": 3,
+        "title": "Token Refresh Latency (p95)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(oauth_token_refresh_duration_seconds_bucket[5m]))",
+            "legendFormat": "Shop {{shop_id}}"
+          }
+        ],
+        "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8}
+      },
+      {
+        "id": 4,
+        "title": "Active OAuth Tokens",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "oauth_tokens_active",
+            "legendFormat": "Tenant {{tenant_id}}"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 8, "w": 6, "h": 4}
+      },
+      {
+        "id": 5,
+        "title": "Tokens Expiring Soon (<24h)",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "oauth_tokens_expiring_soon",
+            "legendFormat": "Tenant {{tenant_id}}"
+          }
+        ],
+        "gridPos": {"x": 18, "y": 8, "w": 6, "h": 4}
+      },
+      {
+        "id": 6,
+        "title": "Token Refresh Success Rate",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "rate(oauth_token_refresh_total{status=\"success\"}[5m]) / rate(oauth_token_refresh_total[5m]) * 100",
+            "legendFormat": "Success Rate %"
+          }
+        ],
+        "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8}
+      }
+    ]
+  }
+}
+

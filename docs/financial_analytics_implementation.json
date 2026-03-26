@@ -1,0 +1,34 @@
+{
+  "audit": [
+    { "file": "etsy_oauth.py", "gap": "Scope verification", "status": "Updated to accept billing_r OR transactions_r" },
+    { "file": "financials.py", "gap": "No sync status endpoint", "status": "Added GET /sync-status" },
+    { "file": "financial_service.py", "gap": "No discount aggregation", "status": "Added get_discount_summary, total_discounts in summary" },
+    { "file": "financials/page.tsx", "gap": "Missing UI components", "status": "Added payout card, sync status, discounts section" },
+    { "file": "financial_tasks.py", "gap": "Scope check and sync status persistence", "status": "Updated _has_financial_scope, persist sync status" },
+    { "file": "models/listings.py", "gap": "No financial_sync_status table", "status": "Added FinancialSyncStatus model" }
+  ],
+  "model_changes": [
+    { "name": "FinancialSyncStatus", "migration": "20260220_add_financial_sync_status" }
+  ],
+  "api_changes": [
+    { "method": "GET", "path": "/api/financials/sync-status", "description": "Last sync timestamps per shop" },
+    { "method": "GET", "path": "/api/financials/discounts", "description": "Aggregated discounts from orders" }
+  ],
+  "frontend_changes": [
+    "Upcoming Payout prominent card",
+    "Financial Trends (existing timeline bar chart)",
+    "Sync status and last updated timestamp",
+    "Discounts section (derived from orders)"
+  ],
+  "tests_added": [
+    "test_discount_summary_required_keys",
+    "test_financials_sync_status_contract",
+    "test_financials_discounts_contract",
+    "test_financial_summary_fields (updated for total_discounts)"
+  ],
+  "limitations": [
+    "Etsy Coupon API read not confirmed; discounts from Order.discount_amt only",
+    "Scope billing_r vs transactions_r for ledger needs live verification"
+  ],
+  "confidence": "high"
+}

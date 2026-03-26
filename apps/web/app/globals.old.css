@@ -1,0 +1,399 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /*
+    Design system palette (STRICT):
+    - Primary: #ffffff
+    - Secondary: #0f172a, #1e293b
+    - Tertiary: #334155, #94a3b8
+  */
+  --background: #ffffff;
+  --background-dark: #ffffff;
+  --card-bg: #ffffff;
+  --card-bg-hover: rgba(51, 65, 85, 0.03); /* #334155 @ 3% */
+  --border-color: rgba(51, 65, 85, 0.22);  /* #334155 @ 22% */
+  
+  /* Text Colors */
+  --text-primary: #0f172a;
+  --text-secondary: #1e293b;
+  --text-muted: #94a3b8;
+
+  /* Text on dark surfaces (nav, sidebar) */
+  --text-inverse: #ffffff;
+  --text-inverse-muted: #94a3b8;
+  
+  /* Interactive / emphasis (uses secondary palette) */
+  --primary: #0f172a;
+  --primary-light: #1e293b;
+  --primary-dark: #1e293b;
+  --primary-bg: rgba(51, 65, 85, 0.08); /* #334155 @ 8% */
+  
+  /*
+    Status tokens mapped to palette (no new colors).
+    We communicate state via hierarchy, weight, and subtle neutrals.
+  */
+  --success: #0f172a;
+  --success-light: #1e293b;
+  --success-bg: rgba(51, 65, 85, 0.08);
+  
+  --info: #0f172a;
+  --info-light: #1e293b;
+  --info-bg: rgba(51, 65, 85, 0.08);
+  
+  --warning: #0f172a;
+  --warning-bg: rgba(51, 65, 85, 0.08);
+  
+  --danger: #0f172a;
+  --danger-bg: rgba(51, 65, 85, 0.08);
+  
+  --teal: #1e293b;
+  --teal-bg: rgba(51, 65, 85, 0.08);
+  
+  /* Sidebar */
+  --sidebar-bg: #0f172a;
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 80px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--background);
+  color: var(--text-primary);
+  font-family: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Custom scrollbar - Vuexy style */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Card hover effects */
+.card-hover {
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.card-hover:hover {
+  background: var(--card-bg-hover);
+  border-color: rgba(51, 65, 85, 0.35);
+}
+
+/* Glow effects for active states */
+.glow-primary {
+  box-shadow: none;
+}
+
+.glow-success {
+  box-shadow: none;
+}
+
+.glow-info {
+  box-shadow: none;
+}
+
+/* No gradients: keep class names but render as solids */
+.gradient-primary {
+  background: var(--primary);
+}
+
+.gradient-success {
+  background: var(--primary);
+}
+
+.gradient-info {
+  background: var(--primary);
+}
+
+.gradient-warning {
+  background: var(--primary);
+}
+
+.gradient-danger {
+  background: var(--primary);
+}
+
+/* Kept for compatibility */
+.gradient-blue-green {
+  background: var(--primary);
+}
+
+.gradient-teal {
+  background: var(--primary);
+}
+
+/* Animation utilities */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-slide-in {
+  animation: none;
+}
+
+.animate-fade-in {
+  animation: none;
+}
+
+/* Sidebar active item with blue-green gradient */
+.sidebar-item-active {
+  background: rgba(255, 255, 255, 0.08);
+  border-left: 3px solid var(--text-inverse);
+}
+
+/* Custom scrollbar styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Input focus states (subtle, no glow) */
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: rgba(51, 65, 85, 0.45) !important;
+  box-shadow: none;
+}
+
+/* Buttons (solid, restrained) */
+.btn-primary {
+  background: var(--primary);
+  color: var(--text-inverse);
+  border: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+}
+
+/* Alias: keep for compatibility */
+.btn-success {
+  background: var(--primary);
+  color: var(--text-inverse);
+  border: none;
+}
+
+/* Design system overrides for legacy utility colors */
+.bg-white { background-color: var(--background) !important; }
+.bg-gray-50, .bg-gray-100, .bg-gray-200,
+.bg-slate-50, .bg-slate-100, .bg-slate-200,
+.bg-zinc-50, .bg-zinc-100, .bg-zinc-200,
+.bg-neutral-50, .bg-neutral-100, .bg-neutral-200,
+.bg-stone-50, .bg-stone-100, .bg-stone-200 {
+  background-color: var(--card-bg-hover) !important;
+}
+/* Allow red colors for alerts/warnings */
+.bg-red-50 {
+  background-color: #fef2f2 !important;
+}
+.bg-red-100 {
+  background-color: #fee2e2 !important;
+}
+.bg-red-200 {
+  background-color: #fecaca !important;
+}
+
+/* Allow green colors for success states */
+.bg-green-50 {
+  background-color: #f0fdf4 !important;
+}
+.bg-green-100 {
+  background-color: #dcfce7 !important;
+}
+.bg-green-200 {
+  background-color: #bbf7d0 !important;
+}
+
+/* Keep other colors as design system */
+.bg-blue-50, .bg-yellow-50,
+.bg-orange-50, .bg-teal-50, .bg-emerald-50, .bg-indigo-50, .bg-purple-50 {
+  background-color: var(--background) !important;
+}
+.bg-blue-100, .bg-yellow-100,
+.bg-orange-100, .bg-teal-100, .bg-emerald-100, .bg-indigo-100, .bg-purple-100 {
+  background-color: var(--primary-bg) !important;
+}
+.bg-blue-200, .bg-yellow-200,
+.bg-orange-200, .bg-teal-200, .bg-emerald-200, .bg-indigo-200, .bg-purple-200 {
+  background-color: var(--card-bg-hover) !important;
+}
+/* Allow red and green button colors */
+.bg-red-600 {
+  background-color: #dc2626 !important;
+}
+.bg-red-700 {
+  background-color: #b91c1c !important;
+}
+.bg-green-600 {
+  background-color: #16a34a !important;
+}
+.bg-green-700 {
+  background-color: #15803d !important;
+}
+
+/* Keep other colors as design system */
+.bg-blue-600, .bg-blue-700,
+.bg-yellow-600, .bg-yellow-700,
+.bg-orange-600, .bg-orange-700,
+.bg-teal-500, .bg-teal-600, .bg-teal-700,
+.bg-emerald-600, .bg-emerald-700,
+.bg-indigo-600, .bg-indigo-700,
+.bg-purple-600, .bg-purple-700,
+.bg-slate-800, .bg-slate-900,
+.bg-gray-800, .bg-gray-900 {
+  background-color: var(--text-primary) !important;
+}
+
+.text-gray-900, .text-slate-900, .text-zinc-900, .text-neutral-900, .text-stone-900 {
+  color: var(--text-primary) !important;
+}
+.text-gray-800, .text-slate-800, .text-zinc-800, .text-neutral-800, .text-stone-800 {
+  color: var(--text-secondary) !important;
+}
+/* Allow red and green text colors for alerts/success */
+.text-red-800 {
+  color: #991b1b !important;
+}
+.text-red-700 {
+  color: #b91c1c !important;
+}
+.text-red-600 {
+  color: #dc2626 !important;
+}
+.text-green-800 {
+  color: #166534 !important;
+}
+.text-green-700 {
+  color: #15803d !important;
+}
+.text-green-600 {
+  color: #16a34a !important;
+}
+
+/* Keep other colors as design system */
+.text-gray-700, .text-slate-700, .text-zinc-700, .text-neutral-700, .text-stone-700,
+.text-blue-700, .text-yellow-700,
+.text-orange-700, .text-teal-700, .text-emerald-700, .text-indigo-700, .text-purple-700 {
+  color: var(--text-secondary) !important;
+}
+.text-gray-600, .text-slate-600, .text-zinc-600, .text-neutral-600, .text-stone-600,
+.text-blue-600, .text-yellow-600,
+.text-orange-600, .text-teal-600, .text-emerald-600, .text-indigo-600, .text-purple-600 {
+  color: var(--text-secondary) !important;
+}
+.text-gray-500, .text-slate-500, .text-zinc-500, .text-neutral-500, .text-stone-500,
+.text-blue-500, .text-green-500, .text-red-500, .text-yellow-500,
+.text-orange-500, .text-teal-500, .text-emerald-500, .text-indigo-500, .text-purple-500 {
+  color: var(--text-muted) !important;
+}
+.text-gray-400, .text-slate-400, .text-zinc-400, .text-neutral-400, .text-stone-400 {
+  color: var(--text-muted) !important;
+}
+
+/* Allow red and green border colors for alerts/success */
+.border-red-200 {
+  border-color: #fecaca !important;
+}
+.border-red-300 {
+  border-color: #fca5a5 !important;
+}
+.border-green-200 {
+  border-color: #bbf7d0 !important;
+}
+.border-green-300 {
+  border-color: #86efac !important;
+}
+
+/* Keep other colors as design system */
+.border-gray-100, .border-gray-200, .border-gray-300,
+.border-slate-100, .border-slate-200, .border-slate-300,
+.border-zinc-100, .border-zinc-200, .border-zinc-300,
+.border-neutral-100, .border-neutral-200, .border-neutral-300,
+.border-stone-100, .border-stone-200, .border-stone-300,
+.border-blue-200, .border-yellow-200,
+.border-orange-200, .border-teal-200, .border-emerald-200, .border-indigo-200, .border-purple-200 {
+  border-color: var(--border-color) !important;
+}
+
+/* Remove gradients everywhere */
+.bg-gradient-to-br,
+.bg-gradient-to-r,
+.bg-gradient-to-t,
+.bg-gradient-to-b,
+.bg-gradient-to-l {
+  background-image: none !important;
+}
+.bg-gradient-to-br,
+.bg-gradient-to-t,
+.bg-gradient-to-b,
+.bg-gradient-to-l {
+  background-color: var(--background) !important;
+}
+.bg-gradient-to-r {
+  background-color: var(--text-primary) !important;
+}
+
+/* ── Analytics drawer slide-in animation ────────────────────── */
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.25s ease-out;
+}

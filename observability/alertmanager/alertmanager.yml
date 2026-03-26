@@ -1,0 +1,120 @@
+global:
+  resolve_timeout: 5m
+
+# Alert routing tree
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  receiver: 'default-receiver'
+  
+  # Child routes
+  routes:
+    # Critical alerts - immediate notification
+    - match:
+        severity: critical
+      receiver: 'critical-alerts'
+      group_wait: 0s
+      group_interval: 5m
+      repeat_interval: 3h
+    
+    # Warning alerts - batched notification
+    - match:
+        severity: warning
+      receiver: 'warning-alerts'
+      group_wait: 30s
+      group_interval: 10m
+      repeat_interval: 12h
+    
+    # OAuth/Auth alerts
+    - match:
+        component: oauth
+      receiver: 'oauth-alerts'
+    
+    # Worker/Job alerts
+    - match:
+        component: worker
+      receiver: 'worker-alerts'
+    
+    # API alerts
+    - match:
+        component: api
+      receiver: 'api-alerts'
+
+# Alert receivers
+receivers:
+  # Default receiver (logging only)
+  - name: 'default-receiver'
+    webhook_configs:
+      - url: 'http://etsy-api:8080/api/alerts/webhook'
+        send_resolved: true
+  
+  # Critical alerts - multiple channels
+  - name: 'critical-alerts'
+    # Email configuration (configure SMTP in production)
+    email_configs:
+      - to: 'alerts@example.com'
+        from: 'prometheus@etsy-automation.com'
+        smarthost: 'smtp.gmail.com:587'
+        auth_username: 'your-email@gmail.com'
+        auth_password: 'your-app-password'  # Use app password, not account password
+        headers:
+          Subject: '🚨 CRITICAL: {{ .GroupLabels.alertname }}'
+    
+    # Slack configuration (uncomment and configure)
+    # slack_configs:
+    #   - api_url: 'YOUR_SLACK_WEBHOOK_URL'
+    #     channel: '#alerts-critical'
+    #     title: '🚨 Critical Alert: {{ .GroupLabels.alertname }}'
+    #     text: '{{ range .Alerts }}{{ .Annotations.description }}{{ end }}'
+    
+    # Webhook (custom integration)
+    webhook_configs:
+      - url: 'http://etsy-api:8080/api/alerts/webhook'
+        send_resolved: true
+  
+  # Warning alerts
+  - name: 'warning-alerts'
+    email_configs:
+      - to: 'alerts@example.com'
+        from: 'prometheus@etsy-automation.com'
+        smarthost: 'smtp.gmail.com:587'
+        auth_username: 'your-email@gmail.com'
+        auth_password: 'your-app-password'
+        headers:
+          Subject: '⚠️  Warning: {{ .GroupLabels.alertname }}'
+  
+  # OAuth-specific alerts
+  - name: 'oauth-alerts'
+    webhook_configs:
+      - url: 'http://etsy-api:8080/api/alerts/oauth'
+        send_resolved: true
+  
+  # Worker-specific alerts
+  - name: 'worker-alerts'
+    webhook_configs:
+      - url: 'http://etsy-api:8080/api/alerts/worker'
+        send_resolved: true
+  
+  # API-specific alerts
+  - name: 'api-alerts'
+    webhook_configs:
+      - url: 'http://etsy-api:8080/api/alerts/api'
+        send_resolved: true
+
+# Inhibition rules (suppress alerts based on other active alerts)
+inhibit_rules:
+  # Suppress warning alerts if critical alert is firing
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'cluster', 'service']
+  
+  # Suppress worker alerts if no workers are active
+  - source_match:
+      alertname: 'NoActiveWorkers'
+    target_match_re:
+      alertname: '(HighQueueDepth|HighTaskFailureRate)'
+
