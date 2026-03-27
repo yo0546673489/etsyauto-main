@@ -1,259 +1,337 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import DashboardCard from '@/components/dashboard/DashboardCard';
-import { useShop } from '@/lib/shop-context';
-import { useToast } from '@/lib/toast-context';
-import { messagesApi, type MessageThread, type MessageListResponse } from '@/lib/api';
-import { cn } from '@/lib/utils';
-import { MessageCircle } from 'lucide-react';
+import {
+  msgConversationsApi, msgMessagesApi, msgRepliesApi, msgStoresApi,
+  MsgConversation, MsgMessage, MsgStore,
+} from '@/lib/messages-api';
+import MsgAvatar from '@/components/messages/MsgAvatar';
+import MsgConversationItem from '@/components/messages/MsgConversationItem';
+import MsgBubble from '@/components/messages/MsgBubble';
+import MsgDateSeparator from '@/components/messages/MsgDateSeparator';
+import MsgSkeleton from '@/components/messages/MsgSkeleton';
+import { MessageCircle, Search, Send, ChevronLeft } from 'lucide-react';
 
-type StatusFilter = 'all' | 'pending_read' | 'unread' | 'replied' | 'failed';
+type PendingMsg = MsgMessage & { _pending?: boolean; _failed?: boolean };
 
-function formatTimeAgo(iso: string): string {
-  const date = new Date(iso);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const seconds = Math.floor(diffMs / 1000);
-  if (seconds < 60) return 'Just now';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} min${minutes === 1 ? '' : 's'} ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
-  const days = Math.floor(hours / 24);
-  return `${days} day${days === 1 ? '' : 's'} ago`;
+function isSameDay(a: string, b: string) {
+  return new Date(a).toDateString() === new Date(b).toDateString();
 }
 
-function statusBadgeClasses(status: MessageThread['status']): string {
-  switch (status) {
-    case 'unread':
-      return 'bg-blue-50 text-blue-700 border border-blue-200';
-    case 'replied':
-      return 'bg-emerald-50 text-emerald-700 border border-emerald-200';
-    case 'failed':
-      return 'bg-red-50 text-red-700 border border-red-200';
-    case 'pending_read':
-    default:
-      return 'bg-gray-50 text-gray-700 border border-gray-200';
-  }
-}
+const statusLabels: Record<string, string> = {
+  new: 'חדש', open: 'פתוח', answered: 'נענה', closed: 'סגור',
+};
 
-export default function MessagesInboxPage() {
-  const router = useRouter();
-  const { shops, selectedShopId } = useShop();
-  const { showToast } = useToast();
+export default function MessagesPage() {
+  const [stores, setStores] = useState<MsgStore[]>([]);
+  const [conversations, setConversations] = useState<MsgConversation[]>([]);
+  const [convLoading, setConvLoading] = useState(true);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedConv, setSelectedConv] = useState<MsgConversation | null>(null);
+  const [messages, setMessages] = useState<PendingMsg[]>([]);
+  const [msgLoading, setMsgLoading] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sendFailed, setSendFailed] = useState(false);
+  const [storeFilter, setStoreFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [search, setSearch] = useState('');
+  const [showMobileChat, setShowMobileChat] = useState(false);
+  const [apiError, setApiError] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const [threads, setThreads] = useState<MessageThread[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [limit] = useState(20);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [loading, setLoading] = useState(true);
-
-  const shopOptions = useMemo(
-    () => [{ id: 0, display_name: 'All shops' as string }, ...shops],
-    [shops],
-  );
-  const [shopFilterId, setShopFilterId] = useState<number | null>(null);
-
+  // Load stores once
   useEffect(() => {
-    if (selectedShopId) {
-      setShopFilterId(selectedShopId);
-    }
-  }, [selectedShopId]);
+    msgStoresApi.getAll().then(setStores).catch(() => {});
+  }, []);
 
-  const loadThreads = async () => {
+  // Load conversations
+  const loadConversations = useCallback(async () => {
+    setConvLoading(true);
+    setApiError(false);
     try {
-      setLoading(true);
-      const res: MessageListResponse = await messagesApi.list(page, limit, {
-        shopId: shopFilterId || undefined,
-        status: statusFilter === 'all' ? null : statusFilter,
-      });
-      setThreads(res.threads);
-      setTotal(res.total);
-    } catch (error: any) {
-      console.error('Failed to load message threads', error);
-      showToast(error.detail || 'Failed to load messages', 'error');
+      const params: any = {};
+      if (storeFilter) params.store_id = parseInt(storeFilter);
+      if (statusFilter) params.status = statusFilter;
+      if (search) params.search = search;
+      const data = await msgConversationsApi.getAll(params);
+      setConversations(data);
+    } catch {
+      setApiError(true);
     } finally {
-      setLoading(false);
+      setConvLoading(false);
+    }
+  }, [storeFilter, statusFilter, search]);
+
+  useEffect(() => { loadConversations(); }, [loadConversations]);
+
+  // Load messages for selected conversation
+  useEffect(() => {
+    if (!selectedId) return;
+    setMsgLoading(true);
+    msgMessagesApi.getByConversation(selectedId)
+      .then(setMessages)
+      .catch(() => {})
+      .finally(() => setMsgLoading(false));
+  }, [selectedId]);
+
+  // Auto scroll to bottom
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length]);
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 100) + 'px';
+    }
+  }, [replyText]);
+
+  const selectConversation = async (id: number) => {
+    setSelectedId(id);
+    setShowMobileChat(true);
+    setSendFailed(false);
+    setReplyText('');
+    try {
+      const conv = await msgConversationsApi.getOne(id);
+      setSelectedConv(conv);
+    } catch {}
+  };
+
+  const handleStatusChange = async (status: string) => {
+    if (!selectedId || !selectedConv) return;
+    await msgConversationsApi.updateStatus(selectedId, status).catch(() => {});
+    const updated = { ...selectedConv, status: status as MsgConversation['status'] };
+    setSelectedConv(updated);
+    setConversations(prev => prev.map(c => c.id === selectedId ? updated : c));
+  };
+
+  const handleSend = async () => {
+    if (!replyText.trim() || !selectedId || !selectedConv || sending) return;
+    const text = replyText.trim();
+    setReplyText('');
+    setSendFailed(false);
+    setSending(true);
+
+    const tempMsg: PendingMsg = {
+      id: Date.now() * -1,
+      conversation_id: selectedId,
+      sender_type: 'store',
+      sender_name: selectedConv.store_name || `חנות ${selectedConv.store_number}`,
+      message_text: text,
+      sent_at: new Date().toISOString(),
+      _pending: true,
+    };
+    setMessages(prev => [...prev, tempMsg]);
+
+    try {
+      await msgRepliesApi.send(selectedId, text);
+      setMessages(prev => prev.map(m => m.id === tempMsg.id ? { ...m, _pending: false } : m));
+    } catch {
+      setSendFailed(true);
+      setMessages(prev => prev.map(m => m.id === tempMsg.id ? { ...m, _pending: false, _failed: true } : m));
+      setReplyText(text);
+    } finally {
+      setSending(false);
     }
   };
-
-  useEffect(() => {
-    loadThreads();
-    // Auto-refresh every 30 seconds
-    const id = setInterval(loadThreads, 30000);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, limit, shopFilterId, statusFilter]);
-
-  const handleRowClick = (threadId: number) => {
-    router.push(`/messages/${threadId}`);
-  };
-
-  const totalPages = Math.max(1, Math.ceil(total / limit));
 
   return (
     <DashboardLayout>
-      <div className="max-w-[1200px] mx-auto space-y-6">
-        <DashboardCard
-          title="Messages"
-          subtitle="View and reply to customer conversations from Etsy."
-          icon={<MessageCircle className="w-5 h-5" />}
+      {/* -m-6 cancels DashboardLayout p-6, h-full fills remaining space */}
+      <div className="-m-6 flex h-full overflow-hidden" dir="rtl" style={{ minHeight: 0 }}>
+
+        {/* ── RIGHT PANEL: Conversation List (35%) ── */}
+        <div className={`flex flex-col border-l border-[var(--border-color)] bg-[var(--card-bg)]
+          ${showMobileChat ? 'hidden md:flex' : 'flex'}
+          w-full md:w-[35%] lg:w-[30%] min-w-0`}
         >
-          {/* Filters */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-            <div className="flex items-center gap-3">
-              <label className="text-xs font-medium text-[var(--text-muted)]">
-                Shop
-              </label>
+          {/* Header */}
+          <div className="px-4 py-3 border-b border-[var(--border-color)] flex-shrink-0">
+            <div className="flex items-center gap-2 mb-3">
+              <MessageCircle className="w-5 h-5" style={{ color: 'var(--primary)' }} />
+              <h1 className="text-lg font-bold text-[var(--text-primary)]">הודעות</h1>
+            </div>
+            {/* Search */}
+            <div className="relative mb-2">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-muted)]" />
+              <input
+                type="text"
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="חיפוש..."
+                className="w-full pr-9 pl-3 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--background)] text-sm text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+                dir="rtl"
+              />
+            </div>
+            {/* Filters */}
+            <div className="flex gap-2">
               <select
-                className="px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--background)] text-sm text-[var(--text-primary)]"
-                value={shopFilterId ?? 0}
-                onChange={(e) => {
-                  const val = Number(e.target.value);
-                  setShopFilterId(val === 0 ? null : val);
-                  setPage(1);
-                }}
+                value={storeFilter}
+                onChange={e => setStoreFilter(e.target.value)}
+                className="flex-1 px-2 py-1.5 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--background)] text-[var(--text-secondary)] focus:outline-none"
               >
-                {shopOptions.map((shop) => (
-                  <option key={shop.id} value={shop.id}>
-                    {shop.display_name}
-                  </option>
+                <option value="">כל החנויות</option>
+                {stores.map(s => (
+                  <option key={s.id} value={String(s.id)}>{s.store_name || `חנות ${s.store_number}`}</option>
                 ))}
               </select>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              {([
-                { key: 'all', label: 'All' },
-                { key: 'unread', label: 'Unread' },
-                { key: 'replied', label: 'Replied' },
-                { key: 'failed', label: 'Failed' },
-              ] as const).map((btn) => {
-                const active = statusFilter === btn.key;
-                return (
-                  <button
-                    key={btn.key}
-                    type="button"
-                    onClick={() => {
-                      setStatusFilter(btn.key);
-                      setPage(1);
-                    }}
-                    className={cn(
-                      'px-3 py-1.5 rounded-full text-xs font-medium border transition-colors',
-                      active
-                        ? 'bg-[var(--primary)] text-white border-[var(--primary)]'
-                        : 'bg-[var(--card-bg)] text-[var(--text-secondary)] border-[var(--border-color)] hover:bg-[var(--card-hover)]',
-                    )}
-                  >
-                    {btn.label}
-                  </button>
-                );
-              })}
+              <select
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value)}
+                className="flex-1 px-2 py-1.5 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--background)] text-[var(--text-secondary)] focus:outline-none"
+              >
+                <option value="">כל הסטטוסים</option>
+                <option value="new">חדש</option>
+                <option value="open">פתוח</option>
+                <option value="answered">נענה</option>
+                <option value="closed">סגור</option>
+              </select>
             </div>
           </div>
 
-          {/* List */}
-          {loading ? (
-            <div className="flex items-center justify-center py-10">
-              <div className="w-8 h-8 rounded-full border-2 border-[var(--primary)] border-t-transparent animate-spin" />
-            </div>
-          ) : threads.length === 0 ? (
-            <div className="py-10 text-center text-sm text-[var(--text-muted)]">
-              No messages yet. Once customers contact you on Etsy, new conversations will appear here.
-            </div>
-          ) : (
-            <div className="divide-y divide-[var(--border-color)]">
-              {threads.map((thread) => {
-                const shopName =
-                  shops.find((s) => s.id === thread.shop_id)?.display_name ?? `Shop #${thread.shop_id}`;
-                const isReplied = thread.status === 'replied';
-                return (
-                  <button
-                    key={thread.id}
-                    type="button"
-                    onClick={() => handleRowClick(thread.id)}
-                    className="w-full text-left py-3 px-2 hover:bg-[var(--card-hover)] transition-colors flex items-start gap-3"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-3 mb-1">
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-xs font-medium text-[var(--text-muted)] truncate">
-                            {shopName}
-                          </span>
-                          <span className="text-sm font-semibold text-[var(--text-primary)] truncate">
-                            {thread.customer_name || 'Unknown customer'}
-                          </span>
-                        </div>
-                        <span
-                          className={cn(
-                            'inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide',
-                            statusBadgeClasses(thread.status),
-                          )}
-                        >
-                          {thread.status === 'pending_read'
-                            ? 'Pending'
-                            : thread.status.charAt(0).toUpperCase() + thread.status.slice(1)}
-                        </span>
-                      </div>
-                      <p
-                        className={cn(
-                          'text-xs truncate',
-                          isReplied ? 'text-[var(--text-muted)]' : 'text-[var(--text-secondary)]',
-                        )}
-                      >
-                        {thread.customer_message_preview || 'No message text yet'}
-                      </p>
-                    </div>
-                    {thread.created_at && (
-                      <span className="text-[10px] text-[var(--text-muted)] whitespace-nowrap ml-2">
-                        {formatTimeAgo(thread.created_at)}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4 text-xs text-[var(--text-muted)]">
-              <span>
-                Page {page} of {totalPages}
-              </span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  className={cn(
-                    'px-2 py-1 rounded border border-[var(--border-color)]',
-                    page <= 1 && 'opacity-40 cursor-not-allowed',
-                  )}
-                >
-                  Previous
-                </button>
-                <button
-                  type="button"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  className={cn(
-                    'px-2 py-1 rounded border border-[var(--border-color)]',
-                    page >= totalPages && 'opacity-40 cursor-not-allowed',
-                  )}
-                >
-                  Next
+          {/* Conversation List */}
+          <div className="flex-1 overflow-y-auto">
+            {apiError ? (
+              <div className="p-4 text-center text-sm text-[var(--text-muted)]">
+                <p className="mb-2">לא ניתן להתחבר למערכת ההודעות</p>
+                <p className="text-xs">ודא שהשרת רץ על פורט 3500</p>
+                <button onClick={loadConversations} className="mt-2 text-xs underline" style={{ color: 'var(--primary)' }}>
+                  נסה שוב
                 </button>
               </div>
+            ) : convLoading ? (
+              <MsgSkeleton count={7} />
+            ) : conversations.length === 0 ? (
+              <div className="p-6 text-center text-sm text-[var(--text-muted)]">
+                אין שיחות להצגה
+              </div>
+            ) : (
+              conversations.map(conv => (
+                <MsgConversationItem
+                  key={conv.id}
+                  conv={conv}
+                  isSelected={selectedId === conv.id}
+                  onClick={() => selectConversation(conv.id)}
+                />
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* ── LEFT PANEL: Chat Window (65%) ── */}
+        <div className={`flex flex-col flex-1 min-w-0 bg-[var(--background)]
+          ${!showMobileChat ? 'hidden md:flex' : 'flex'}`}
+        >
+          {!selectedConv ? (
+            /* Empty state */
+            <div className="flex flex-col items-center justify-center h-full text-center px-4"
+              style={{ backgroundColor: 'var(--card-bg)' }}>
+              <MessageCircle className="w-16 h-16 mb-4 opacity-10" style={{ color: 'var(--primary)' }} />
+              <p className="text-base font-medium text-[var(--text-secondary)]">בחר שיחה מהרשימה</p>
+              <p className="text-sm text-[var(--text-muted)] mt-1">כדי לצפות בהודעות ולשלוח תגובות</p>
             </div>
+          ) : (
+            <>
+              {/* Chat Header */}
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--border-color)] bg-[var(--card-bg)] flex-shrink-0">
+                {/* Mobile back */}
+                <button
+                  onClick={() => setShowMobileChat(false)}
+                  className="md:hidden p-1 rounded hover:bg-[var(--card-hover)]"
+                >
+                  <ChevronLeft className="w-5 h-5 text-[var(--text-muted)]" />
+                </button>
+                <MsgAvatar name={selectedConv.customer_name} />
+                <div className="flex-1 min-w-0 text-right">
+                  <h2 className="font-semibold text-[var(--text-primary)] text-sm">
+                    {selectedConv.customer_name}
+                  </h2>
+                  <p className="text-xs text-[var(--text-muted)]">
+                    {selectedConv.store_name || `חנות ${selectedConv.store_number}`}
+                  </p>
+                </div>
+                <select
+                  value={selectedConv.status}
+                  onChange={e => handleStatusChange(e.target.value)}
+                  className="text-xs px-2 py-1.5 rounded-lg border border-[var(--border-color)] bg-[var(--background)] text-[var(--text-secondary)] focus:outline-none"
+                >
+                  {Object.entries(statusLabels).map(([v, l]) => (
+                    <option key={v} value={v}>{l}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto py-3" style={{ backgroundColor: '#f7f9f8' }}>
+                {msgLoading ? (
+                  <div className="flex justify-center items-center h-full">
+                    <div className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin"
+                      style={{ borderColor: 'var(--primary)', borderTopColor: 'transparent' }} />
+                  </div>
+                ) : messages.length === 0 ? (
+                  <div className="flex justify-center items-center h-full text-sm text-[var(--text-muted)]">
+                    אין הודעות עדיין
+                  </div>
+                ) : (
+                  <>
+                    {messages.map((msg, i) => (
+                      <div key={msg.id}>
+                        {(i === 0 || !isSameDay(messages[i - 1].sent_at, msg.sent_at)) && (
+                          <MsgDateSeparator date={msg.sent_at} />
+                        )}
+                        <MsgBubble
+                          senderType={msg.sender_type}
+                          senderName={msg.sender_name}
+                          text={msg.message_text}
+                          sentAt={msg.sent_at}
+                          pending={msg._pending}
+                          failed={msg._failed}
+                        />
+                      </div>
+                    ))}
+                    <div ref={bottomRef} />
+                  </>
+                )}
+              </div>
+
+              {/* Reply Input */}
+              <div className="flex-shrink-0 border-t border-[var(--border-color)] bg-[var(--card-bg)] px-4 py-3">
+                {sendFailed && (
+                  <p className="text-xs text-red-500 mb-2">שליחה נכשלה ❌ — בדוק שהמערכת פועלת</p>
+                )}
+                <div className="flex items-end gap-2">
+                  <textarea
+                    ref={textareaRef}
+                    value={replyText}
+                    onChange={e => { setReplyText(e.target.value); setSendFailed(false); }}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                    placeholder="כתוב הודעה... (Enter לשליחה)"
+                    disabled={sending}
+                    rows={1}
+                    dir="rtl"
+                    className="flex-1 px-3 py-2 rounded-xl border border-[var(--border-color)] bg-[var(--background)] text-sm text-[var(--text-primary)] resize-none focus:outline-none focus:ring-1 focus:ring-[var(--primary)] disabled:opacity-50"
+                    style={{ minHeight: '40px', maxHeight: '100px' }}
+                  />
+                  <button
+                    onClick={handleSend}
+                    disabled={!replyText.trim() || sending}
+                    className="p-2.5 rounded-xl text-white flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 transition-opacity"
+                    style={{ backgroundColor: 'var(--primary)', minWidth: '44px', minHeight: '40px' }}
+                  >
+                    {sending
+                      ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      : <Send className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            </>
           )}
-        </DashboardCard>
+        </div>
       </div>
     </DashboardLayout>
   );
 }
-

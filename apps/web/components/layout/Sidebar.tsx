@@ -14,6 +14,9 @@ import {
   Link as LinkIcon,
   Check,
   Star,
+  MessageCircle,
+  Tag,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/lib/language-context';
@@ -33,7 +36,9 @@ const ownerNavItems: NavItem[] = [
   { name: 'nav.products',   href: '/products',         icon: Package },
   { name: 'nav.analytics',  href: '/analytics',        icon: BarChart3 },
   { name: 'nav.financials', href: '/financials',       icon: Wallet },
-  { name: 'ביקורות',        href: '/reviews',          icon: Star },
+  { name: 'ביקורות',        href: '/reviews',              icon: Star },
+  { name: 'הנחות',          href: '/discounts',            icon: Tag },
+  { name: 'הודעות',         href: '/messages',             icon: MessageCircle },
 ];
 
 const adminNavItems: NavItem[] = [
@@ -43,12 +48,15 @@ const adminNavItems: NavItem[] = [
   { name: 'nav.analytics',  href: '/analytics',        icon: BarChart3 },
   { name: 'nav.financials', href: '/financials',       icon: Wallet },
   { name: 'ביקורות',        href: '/reviews',          icon: Star },
+  { name: 'הנחות',          href: '/discounts',        icon: Tag },
+  { name: 'הודעות',         href: '/messages',         icon: MessageCircle },
 ];
 
 const memberNavItems: NavItem[] = [
   { name: 'nav.dashboard', href: '/dashboard',  icon: LayoutDashboard },
   { name: 'nav.products',  href: '/products',   icon: Package },
   { name: 'nav.orders',    href: '/orders',     icon: ShoppingCart },
+  { name: 'הודעות',        href: '/messages',   icon: MessageCircle },
 ];
 
 const viewerNavItems: NavItem[] = [
@@ -113,16 +121,6 @@ export function Sidebar() {
         </Link>
       </div>
 
-      {/* Store Info */}
-      <div className="flex flex-col items-center px-6 pt-8 pb-6 border-b border-white/10">
-        <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center mb-3 border border-white/10 overflow-hidden">
-          <span className="text-white font-black text-2xl font-headline">
-            {shopName.charAt(0).toUpperCase()}
-          </span>
-        </div>
-        <h2 className="text-white font-bold text-base font-headline">{shopName}</h2>
-        <p className="text-white/60 text-xs mt-0.5">מוכר פרימיום</p>
-      </div>
 
       {/* Navigation */}
       <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
@@ -182,6 +180,18 @@ export function Sidebar() {
 
       {/* Footer links */}
       <div className="px-4 pb-4 pt-2 border-t border-white/10 mt-2 space-y-1">
+        <Link
+          href="/settings"
+          className={cn(
+            'flex items-center gap-3 px-4 py-2.5 rounded-xl transition-colors text-sm',
+            pathname.startsWith('/settings')
+              ? 'bg-white/20 text-white font-bold'
+              : 'text-white/70 hover:text-white hover:bg-white/10'
+          )}
+        >
+          <Settings className="w-4 h-4" />
+          <span>הגדרות</span>
+        </Link>
         <Link
           href="/docs"
           className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-colors text-sm"
