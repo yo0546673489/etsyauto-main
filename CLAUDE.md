@@ -1,7 +1,7 @@
 # CLAUDE.md — מקור האמת של הפרויקט
 
 **שם הפרויקט**: Profitly (Etsy Automation Platform)
-**עודכן לאחרונה**: 2026-03-26
+**עודכן לאחרונה**: 2026-03-27
 **סטטוס**: Production-Ready ✅
 **גרסה**: 1.1.0
 
@@ -346,7 +346,7 @@ sync_products_from_etsy(shop_id=2, tenant_id=3, full_sync=True)
 - מיקום: `financial_service.py` → `get_payout_estimate()`
 - סטטוס: ידוע, לא דחוף
 
-### ✅ תוקן בסשן הנוכחי (מרץ 2026)
+### ✅ תוקן בסשן 26/03/2026
 - ✅ פורמט מטבע: `ILS70` → `₪70`
 - ✅ Badge format: `+12%` → `12%+`
 - ✅ סדר כרטיסי KPI (RTL)
@@ -357,6 +357,12 @@ sync_products_from_etsy(shop_id=2, tenant_id=3, full_sync=True)
 - ✅ TrendChart — עוצב מחדש לרוחב מלא
 - ✅ Google OAuth — עובד
 - ✅ Etsy OAuth connect link — עובד
+
+### ✅ תוקן בסשן 27/03/2026
+- ✅ **מחיקת חנות נכשלה** — `oauth_tokens` relationship חסר `cascade="all, delete-orphan"`. תוקן ב-`apps/api/app/models/tenancy.py`
+- ✅ **חיבור חנות מעביר ל-login** — `/oauth/etsy/callback` לא היה ב-`publicPaths`. תוקן ב-`apps/web/lib/api.ts`
+- ✅ **כפתור "חבר חנות חדשה"** — חזר להתנהגות מעתיק לclipboard (לא ניווט ישיר)
+- ✅ **שינוי שם ריפו GitHub** — מ-`etsyauto-main` ל-`etsy`
 
 ---
 
