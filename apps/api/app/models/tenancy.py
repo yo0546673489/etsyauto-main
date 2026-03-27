@@ -196,7 +196,7 @@ class Shop(Base):
     
     # Relationships
     tenant = relationship("Tenant", back_populates="shops")
-    oauth_tokens = relationship("OAuthToken", back_populates="shop")
+    oauth_tokens = relationship("OAuthToken", back_populates="shop", cascade="all, delete-orphan")
     ingestion_batches = relationship("IngestionBatch", back_populates="shop", cascade="all, delete-orphan")
 
 

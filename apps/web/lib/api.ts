@@ -191,7 +191,7 @@ async function apiRequest<T>(
       response = await doFetch();
     } else {
       if (typeof window !== 'undefined') {
-        const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/accept-invitation', '/messaging/activate', '/'];
+        const publicPaths = ['/login', '/register', '/forgot-password', '/reset-password', '/verify-email', '/accept-invitation', '/messaging/activate', '/', '/oauth/etsy/callback', '/oauth/etsy/success', '/oauth/etsy/start'];
         const isPublicPage = publicPaths.includes(window.location.pathname);
         if (!isPublicPage) {
           window.location.href = '/login';

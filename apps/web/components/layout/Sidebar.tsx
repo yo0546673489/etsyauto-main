@@ -80,8 +80,7 @@ export function Sidebar() {
   };
 
   /**
-   * Generate a new Etsy connect-link and immediately copy it to clipboard.
-   * Shows a checkmark for 3 seconds then reverts.
+   * Generate a new Etsy connect-link and copy it to clipboard.
    */
   const handleConnectNewShop = async () => {
     if (copyState !== 'idle') return;
