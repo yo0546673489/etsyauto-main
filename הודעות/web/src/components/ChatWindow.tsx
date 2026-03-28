@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { Message } from '../api/client';
+import { useEffect, useRef, useState } from 'react';
+import { Message, replyApi } from '../api/client';
 import MessageBubble from './MessageBubble';
 import DateSeparator from './DateSeparator';
 import ReplyInput from './ReplyInput';
@@ -11,13 +11,15 @@ interface Props {
   replyStatus: ReplyStatus;
   onSend: (text: string) => Promise<void>;
   onRetry?: () => void;
+  conversationId?: number;
 }
 
 function isSameDay(a: string, b: string): boolean {
   return new Date(a).toDateString() === new Date(b).toDateString();
 }
 
-export default function ChatWindow({ messages, loading, replyStatus, onSend, onRetry }: Props) {
+export default function ChatWindow({ messages, loading, replyStatus, onSend, onRetry, conversationId }: Props) {
+  const [aiGenerating, setAiGenerating] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -45,6 +47,25 @@ export default function ChatWindow({ messages, loading, replyStatus, onSend, onR
           </>
         )}
       </div>
+      {conversationId && (
+        <div className="flex justify-end px-3 pt-2">
+          <button
+            onClick={async () => {
+              if (!conversationId) return;
+              setAiGenerating(true);
+              try {
+                const res = await replyApi.aiGenerate(conversationId);
+                if (res.success) await onSend(res.generatedReply);
+              } catch (e) { console.error("AI generate failed", e); }
+              finally { setAiGenerating(false); }
+            }}
+            disabled={aiGenerating}
+            className="text-xs bg-purple-50 text-purple-600 px-3 py-1 rounded hover:bg-purple-100 disabled:opacity-50"
+          >
+            {aiGenerating ? "Generating..." : "✨ AI Reply"}
+          </button>
+        </div>
+      )}
       <ReplyInput onSend={onSend} status={replyStatus} onRetry={onRetry} />
     </div>
   );
