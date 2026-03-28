@@ -1,9 +1,9 @@
 # CLAUDE.md — מקור האמת של הפרויקט
 
 **שם הפרויקט**: Profitly (Etsy Automation Platform)
-**עודכן לאחרונה**: 2026-03-27
+**עודכן לאחרונה**: 2026-03-28
 **סטטוס**: Production-Ready ✅
-**גרסה**: 1.1.0
+**גרסה**: 1.2.0
 
 ---
 
@@ -364,6 +364,21 @@ sync_products_from_etsy(shop_id=2, tenant_id=3, full_sync=True)
 - ✅ **כפתור "חבר חנות חדשה"** — חזר להתנהגות מעתיק לclipboard (לא ניווט ישיר)
 - ✅ **שינוי שם ריפו GitHub** — מ-`etsyauto-main` ל-`etsy`
 
+### ✅ נבנה בסשן 28/03/2026 — שרת אוטומציה מרכזי (הודעות/)
+- ✅ **Migration 002** — טבלאות `ai_settings`, `review_replies`, `discount_tasks`, `discount_schedules`
+- ✅ **מודול AI** — `src/ai/replyGenerator.ts` — יצירת תגובות אוטומטיות עם Anthropic API (הודעות + ביקורות)
+- ✅ **EtsyReviewReplier** — אוטומציית תגובה לביקורות דרך AdsPower + HumanBehavior
+- ✅ **EtsyDiscountManager** — יצירת/סיום מבצעי הנחה דרך AdsPower + HumanBehavior
+- ✅ **Workers** — `replyToReview.ts` + `executeDiscount.ts` עם BullMQ, profile locking, retry
+- ✅ **API Routes** — `/api/reviews` (CRUD + AI generate) + `/api/discounts` (tasks + schedules)
+- ✅ **עדכון replies.ts** — AI generate endpoint, AI settings per store
+- ✅ **עדכון setup.ts** — 2 queues חדשים (reply-to-review, execute-discount)
+- ✅ **עדכון server.ts** — רישום routes חדשים
+- ✅ **עדכון index.ts** — אתחול workers + migration 002
+- ✅ **Frontend** — ReviewsPage, DiscountsPage, ReviewCard, DiscountCard
+- ✅ **NavBar** — ניווט ל-4 עמודים (Messages, Reviews, Discounts, Stores)
+- ✅ **ChatWindow** — כפתור AI Reply
+
 ---
 
 ## 8. החלטות חשובות
@@ -474,4 +489,4 @@ docker compose -p etsyauto up -d --build api
 
 ---
 
-**עודכן**: 2026-03-26 | **הבא**: Billing/Payment balance sync, Analytics מלא
+**עודכן**: 2026-03-28 | **הבא**: עדכון סלקטורים ב-inspect-selectors.ts, Billing/Payment balance sync, Analytics מלא, scheduler לרוטציית הנחות
