@@ -18,11 +18,13 @@ async function main() {
 
   const fs = await import('fs');
   const path = await import('path');
-  const migrationPath = path.join(__dirname, 'db/migrations/001_initial.sql');
-  if (fs.existsSync(migrationPath)) {
-    const sql = fs.readFileSync(migrationPath, 'utf-8');
-    await pool.query(sql);
-    logger.info('Migrations applied');
+  for (const migration of ['001_initial.sql', '002_reviews_discounts.sql']) {
+    const migrationPath = path.join(__dirname, 'db/migrations', migration);
+    if (fs.existsSync(migrationPath)) {
+      const sql = fs.readFileSync(migrationPath, 'utf-8');
+      await pool.query(sql);
+      logger.info(`Migration applied: ${migration}`);
+    }
   }
 
   const resolver = new StoreResolver(pool);
