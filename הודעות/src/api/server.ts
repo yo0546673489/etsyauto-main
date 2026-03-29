@@ -9,6 +9,8 @@ import { createStoreRoutes } from './routes/stores';
 import { createConversationRoutes } from './routes/conversations';
 import { createMessageRoutes } from './routes/messages';
 import { createReplyRoutes } from './routes/replies';
+import { reviewRoutes } from './routes/reviews';
+import { discountRoutes } from './routes/discounts';
 import { logger } from '../utils/logger';
 
 export async function createApiServer(pool: Pool, jobQueue: JobQueue, resolver: StoreResolver) {
@@ -19,6 +21,9 @@ export async function createApiServer(pool: Pool, jobQueue: JobQueue, resolver: 
   fastify.register(createConversationRoutes(pool), { prefix: '/api/conversations' });
   fastify.register(createMessageRoutes(pool), { prefix: '/api/messages' });
   fastify.register(createReplyRoutes(pool, jobQueue, resolver), { prefix: '/api/replies' });
+
+  await reviewRoutes(fastify, pool, jobQueue.reviewReplyQueue, resolver);
+  await discountRoutes(fastify, pool, jobQueue.discountQueue, resolver);
 
   fastify.get('/api/health', async () => ({ status: 'ok', timestamp: new Date().toISOString() }));
 
