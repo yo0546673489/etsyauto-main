@@ -15,14 +15,18 @@ interface AdsPowerResponse {
 
 export class AdsPowerController {
   private apiUrl: string;
+  private apiKey: string;
 
   constructor() {
     this.apiUrl = config.adspower.apiUrl;
+    this.apiKey = config.adspower.apiKey;
   }
 
   async checkStatus(): Promise<boolean> {
     try {
-      const response = await axios.get(`${this.apiUrl}/status`);
+      const response = await axios.get(`${this.apiUrl}/status`, {
+        params: this.apiKey ? { api_key: this.apiKey } : {},
+      });
       return response.data.code === 0;
     } catch (error) {
       logger.error('AdsPower API not available', error);
@@ -34,7 +38,7 @@ export class AdsPowerController {
     try {
       const response = await axios.get<AdsPowerResponse>(
         `${this.apiUrl}/api/v1/browser/start`,
-        { params: { serial_number: serialNumber } }
+        { params: { serial_number: serialNumber, ...(this.apiKey ? { api_key: this.apiKey } : {}) } }
       );
 
       if (response.data.code === 0) {
@@ -58,7 +62,7 @@ export class AdsPowerController {
     try {
       const response = await axios.get<AdsPowerResponse>(
         `${this.apiUrl}/api/v1/browser/active`,
-        { params: { serial_number: serialNumber } }
+        { params: { serial_number: serialNumber, ...(this.apiKey ? { api_key: this.apiKey } : {}) } }
       );
       if (response.data.code === 0) return response.data.data;
       return null;
@@ -76,7 +80,7 @@ export class AdsPowerController {
     try {
       const response = await axios.get(
         `${this.apiUrl}/api/v1/browser/stop`,
-        { params: { serial_number: serialNumber } }
+        { params: { serial_number: serialNumber, ...(this.apiKey ? { api_key: this.apiKey } : {}) } }
       );
       if (response.data.code === 0) {
         logger.info(`Profile ${serialNumber} closed`);

@@ -10,6 +10,7 @@ export const config = {
   },
   adspower: {
     apiUrl: process.env.ADSPOWER_API_URL || 'http://local.adspower.net:50325',
+    apiKey: process.env.ADSPOWER_API_KEY || '',
   },
   imap: {
     host: process.env.IMAP_HOST || 'imap.gmail.com',
