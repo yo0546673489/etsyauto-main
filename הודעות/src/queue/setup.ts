@@ -38,6 +38,8 @@ export class JobQueue {
   public syncQueue: Queue;
   public initialSyncQueue: Queue;
   public replyQueue: Queue;
+  public reviewReplyQueue: Queue;
+  public discountQueue: Queue;
   private activeProfiles: Set<string> = new Set();
 
   constructor() {
@@ -45,6 +47,8 @@ export class JobQueue {
     this.syncQueue = new Queue('sync-conversation', { connection });
     this.initialSyncQueue = new Queue('initial-sync', { connection });
     this.replyQueue = new Queue('send-reply', { connection });
+    this.reviewReplyQueue = new Queue('review-reply', { connection });
+    this.discountQueue = new Queue('discount-execute', { connection });
   }
 
   async addSyncConversationJob(data: SyncConversationJobData): Promise<void> {
