@@ -66,6 +66,7 @@ export class EtsyDiscountManager {
       const percentInput = 'input[name="discount_amount"], input[data-discount-value], #discount-amount';
       // ניקוי שדה קודם
       await this.human.humanClick(percentInput);
+      await randomDelay(150, 350);
       await this.page.keyboard.press('Control+a');
       await randomDelay(100, 300);
       await this.human.humanTypeInFocus(config.discountPercent.toString());
@@ -100,6 +101,7 @@ export class EtsyDiscountManager {
       // TODO: עדכן סלקטורים לשדות תאריך
       const startDateInput = 'input[name="start_date"], input[data-start-date], #start-date';
       await this.human.humanClick(startDateInput);
+      await randomDelay(120, 280);
       await this.page.keyboard.press('Control+a');
       await randomDelay(100, 200);
       await this.human.humanTypeInFocus(config.startDate);
@@ -107,6 +109,7 @@ export class EtsyDiscountManager {
 
       const endDateInput = 'input[name="end_date"], input[data-end-date], #end-date';
       await this.human.humanClick(endDateInput);
+      await randomDelay(120, 280);
       await this.page.keyboard.press('Control+a');
       await randomDelay(100, 200);
       await this.human.humanTypeInFocus(config.endDate);
@@ -117,10 +120,12 @@ export class EtsyDiscountManager {
         // TODO: עדכן סלקטור — dropdown של מדינות
         const countryDropdown = 'select[name="country"], [data-country-selector]';
         await this.human.humanClick(countryDropdown);
-        await randomDelay(500, 1000);
-        // בחירת מדינה מהרשימה
+        await randomDelay(400, 900);
+        // בחירת מדינה — דרך selectOption (dropdown נייטיב של OS)
+        // מוסיפים השהיה לפני ואחרי כאילו מחפשים ברשימה
+        await randomDelay(300, 800);
         await this.page.selectOption(countryDropdown, { label: config.targetCountry });
-        await randomDelay(500, 1000);
+        await randomDelay(500, 1200);
       }
 
       // שלב 7: תנאים והגבלות (Terms and conditions — אופציונלי)
@@ -188,7 +193,8 @@ export class EtsyDiscountManager {
         return false;
       }
 
-      await saleCard.scrollIntoViewIfNeeded();
+      // גלילה הדרגתית — אף פעם לא scrollIntoView ישיר
+      await this.human.humanScroll('down', randomBetween(300, 600));
       await randomDelay(500, 1000);
 
       // TODO: עדכן סלקטור לכפתור End Sale

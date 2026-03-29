@@ -101,8 +101,15 @@ export class HumanBehavior {
   }
 
   async scrollToTop(): Promise<void> {
-    await this.page.evaluate(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
-    await randomDelay(500, 1000);
+    // גלילה הדרגתית למעלה — לא window.scrollTo ישיר
+    let scrolled = await this.page.evaluate(() => window.scrollY);
+    while (scrolled > 50) {
+      const step = randomBetween(150, 350);
+      await this.page.mouse.wheel(0, -step);
+      await randomDelay(40, 120);
+      scrolled = await this.page.evaluate(() => window.scrollY);
+    }
+    await randomDelay(400, 900);
   }
 
   async humanNavigate(url: string): Promise<void> {

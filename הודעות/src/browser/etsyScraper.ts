@@ -2,6 +2,14 @@ import { Page } from 'playwright';
 import { HumanBehavior } from './humanBehavior';
 import { logger } from '../utils/logger';
 
+function randomBetween(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function randomDelay(minMs: number, maxMs: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, randomBetween(minMs, maxMs)));
+}
+
 export interface ScrapedMessage {
   senderName: string;
   senderType: 'customer' | 'store';
@@ -29,7 +37,7 @@ export class EtsyScraper {
   async scrapeConversation(conversationUrl: string, knownCustomerName?: string): Promise<ScrapedConversation> {
     await this.human.humanNavigate(conversationUrl);
     await this.page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {});
-    await this.page.waitForTimeout(2000);
+    await randomDelay(1500, 3500);
     await this.human.randomMouseMovement();
 
     const scraped = await this.page.evaluate((storeName: string) => {

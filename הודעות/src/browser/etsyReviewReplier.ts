@@ -139,8 +139,8 @@ export class EtsyReviewReplier {
 
       const targetReview = reviewCards[reviewIndex];
 
-      // גלילה לביקורת
-      await targetReview.scrollIntoViewIfNeeded();
+      // גלילה הדרגתית לביקורת — אף פעם לא scrollIntoView ישיר
+      await this.human.humanScroll('down', randomBetween(300, 600));
       await randomDelay(800, 1500);
       await this.human.randomMouseMovement();
 
