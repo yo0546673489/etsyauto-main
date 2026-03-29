@@ -1,6 +1,3 @@
-// Etsy Message Scraper
-// הערה: הסלקטורים הם PLACEHOLDERS - צריך להריץ scripts/inspect-selectors.ts לעדכן אותם
-
 import { Page } from 'playwright';
 import { HumanBehavior } from './humanBehavior';
 import { logger } from '../utils/logger';
@@ -29,84 +26,66 @@ export class EtsyScraper {
     this.storeName = storeName;
   }
 
-  async scrapeConversationList(): Promise<{ customerName: string; url: string }[]> {
-    await this.human.enterMessagesPage('https://www.etsy.com/your/messages');
-
-    const conversations: { customerName: string; url: string }[] = [];
-    let previousCount = 0;
-    let loadAttempts = 0;
-
-    while (loadAttempts < 20) {
-      // TODO: עדכן סלקטורים אחרי inspect-selectors.ts
-      const currentConvos = await this.page.evaluate(() => {
-        const items = document.querySelectorAll('[data-conversation-id], .conversation-card, .message-thread-item');
-        return Array.from(items).map(item => {
-          const link = item.querySelector('a');
-          const nameEl = item.querySelector('.sender-name, .conversation-partner, [data-buyer-name]');
-          return {
-            customerName: nameEl?.textContent?.trim() || 'Unknown',
-            url: link?.href || '',
-          };
-        }).filter(c => c.url);
-      });
-
-      if (currentConvos.length === previousCount) {
-        loadAttempts++;
-        if (loadAttempts >= 3) break;
-      } else {
-        loadAttempts = 0;
-        previousCount = currentConvos.length;
-      }
-
-      conversations.length = 0;
-      conversations.push(...currentConvos);
-
-      await this.human.humanScroll('down', 500);
-      await this.human.randomMouseMovement();
-    }
-
-    logger.info(`Found ${conversations.length} conversations`);
-    return conversations;
-  }
-
-  async scrapeConversation(conversationUrl: string): Promise<ScrapedConversation> {
+  async scrapeConversation(conversationUrl: string, knownCustomerName?: string): Promise<ScrapedConversation> {
     await this.human.humanNavigate(conversationUrl);
-    await this.page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
-    await this.human.scrollToTop();
+    await this.page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {});
+    await this.page.waitForTimeout(2000);
     await this.human.randomMouseMovement();
 
-    // TODO: עדכן סלקטורים אחרי inspect-selectors.ts
-    const messages = await this.page.evaluate((storeName: string) => {
-      const messageElements = document.querySelectorAll(
-        '.message-thread-message, .convo-message, [data-message-id]'
-      );
-      return Array.from(messageElements).map(el => {
-        const nameEl = el.querySelector('.message-sender-name, .sender-name, [data-sender]');
-        const textEl = el.querySelector('.message-body, .message-text, [data-message-body]');
-        const timeEl = el.querySelector('.message-date, .timestamp, time');
-        const senderName = nameEl?.textContent?.trim() || 'Unknown';
-        const isStore = senderName.toLowerCase() === storeName.toLowerCase();
-        return {
-          senderName,
+    const scraped = await this.page.evaluate((storeName: string) => {
+      const container = document.querySelector('div.scrolling-message-list');
+      if (!container) return { messages: [], customerName: '' };
+
+      // Customer name is in a header element at the top of the message list
+      const headerEl = container.querySelector('[class*="conversation"] [class*="name"], h1, h2');
+      let customerName = headerEl?.textContent?.trim() || '';
+
+      // Message bubbles: wt-rounded + wt-text-body-01 + wt-p-xs-2
+      const bubbles = container.querySelectorAll('div.wt-rounded.wt-text-body-01');
+      const messages: { senderType: string; senderName: string; messageText: string; sentAt: string }[] = [];
+
+      bubbles.forEach(el => {
+        // Skip tiny elements (timestamps etc)
+        const text = el.textContent?.trim() || '';
+        if (text.length < 1) return;
+
+        // Strip "Message:" prefix Etsy adds to aria/accessibility labels
+        const clean = text.replace(/^Message:\s*/i, '').trim();
+        if (!clean) return;
+
+        // Store messages have wt-sem-bg-surface-informational-subtle
+        const isStore = el.classList.contains('wt-sem-bg-surface-informational-subtle');
+
+        messages.push({
           senderType: isStore ? 'store' : 'customer',
-          messageText: textEl?.textContent?.trim() || '',
-          sentAt: timeEl?.getAttribute('datetime') || timeEl?.textContent?.trim() || new Date().toISOString(),
-        };
-      }).filter(m => m.messageText);
+          senderName: isStore ? storeName : '',
+          messageText: clean,
+          sentAt: new Date().toISOString(),
+        });
+      });
+
+      // Deduplicate identical consecutive messages (Etsy sometimes renders duplicates)
+      const deduped = messages.filter((m, i) =>
+        i === 0 || m.messageText !== messages[i - 1].messageText
+      );
+
+      return { messages: deduped, customerName };
     }, this.storeName);
 
-    const customerMessage = messages.find(m => m.senderType === 'customer');
-    const customerName = customerMessage?.senderName || 'Unknown Customer';
+    const customerName = knownCustomerName ||
+      scraped.messages.find(m => m.senderType === 'customer')?.senderName ||
+      scraped.customerName ||
+      'Unknown Customer';
 
-    const totalTextLength = messages.reduce((acc, m) => acc + m.messageText.length, 0);
-    await this.human.readingDelay(totalTextLength);
+    const totalTextLength = scraped.messages.reduce((acc, m) => acc + m.messageText.length, 0);
+    await this.human.readingDelay(Math.min(totalTextLength, 500));
 
-    logger.info(`Scraped ${messages.length} messages from conversation`);
+    logger.info(`Scraped ${scraped.messages.length} messages from conversation`);
 
     return {
       conversationUrl,
       customerName,
-      messages: messages as ScrapedMessage[],
+      messages: scraped.messages as ScrapedMessage[],
     };
   }
 }

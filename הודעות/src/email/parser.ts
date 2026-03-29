@@ -76,33 +76,48 @@ export class EmailParser {
 
   private extractBuyerName(parsed: ParsedMail): string {
     const subject = parsed.subject || '';
+    // "Re: Etsy Conversation with Flore Collas"
+    const convoMatch = subject.match(/conversation with (.+?)(?:\s*$)/i);
+    if (convoMatch) return convoMatch[1].trim();
+    // "Message from Flore Collas"
     const fromMatch = subject.match(/message from (.+?)(?:\s*[-–—]|\s*$)/i);
     if (fromMatch) return fromMatch[1].trim();
-    const sentMatch = subject.match(/^(.+?) sent you/i);
-    if (sentMatch) return sentMatch[1].trim();
-    const body = parsed.text || parsed.html || '';
-    const bodyMatch = body.match(/from\s+([A-Za-z0-9_\-. ]+?)\s+(?:on|about|regarding)/i);
-    if (bodyMatch) return bodyMatch[1].trim();
+    // "Flore sent you a message"
+    const sentSubjectMatch = subject.match(/^(.+?) sent you/i);
+    if (sentSubjectMatch) return sentSubjectMatch[1].trim();
+    // Body: "Flore sent you a message"
+    const body = parsed.text || '';
+    const sentBodyMatch = body.match(/^([A-Za-z][A-Za-z0-9 _\-.]+?)\s+sent you a message/im);
+    if (sentBodyMatch) return sentBodyMatch[1].trim();
     return 'Unknown Buyer';
   }
 
   private extractConversationLink(parsed: ParsedMail): string {
     const html = parsed.html || '';
     const text = parsed.text || '';
+
+    // Extract all hrefs from HTML <a> tags first, look for Etsy conversation links
+    const hrefMatches = html.matchAll(/href=["']([^"']+)["']/gi);
+    for (const m of hrefMatches) {
+      const url = m[1];
+      if (/etsy\.com\/[^\s"'<>]*(message|convo|conversation)/i.test(url)) {
+        return url.split(/[<>"'\s]/)[0];
+      }
+    }
+
     const combined = html + ' ' + text;
     const patterns = [
-      /https?:\/\/(?:www\.)?etsy\.com\/your\/conversations\/\d+/gi,
-      /https?:\/\/(?:www\.)?etsy\.com\/conversations\/\d+/gi,
-      /https?:\/\/(?:www\.)?etsy\.com\/your\/messages\/\d+/gi,
+      /https?:\/\/(?:www\.)?etsy\.com\/your\/conversations\/\d+[^\s"'<>]*/gi,
+      /https?:\/\/(?:www\.)?etsy\.com\/conversations\/\d+[^\s"'<>]*/gi,
+      /https?:\/\/(?:www\.)?etsy\.com\/messages[^\s"'<>]*/gi,
+      /https?:\/\/(?:www\.)?etsy\.com\/your\/messages\/\d+[^\s"'<>]*/gi,
       /https?:\/\/(?:www\.)?etsy\.me\/\w+/gi,
       /https?:\/\/(?:www\.)?etsy\.com\/[^\s"'<>]*(?:message|convo|conversation)[^\s"'<>]*/gi,
     ];
     for (const pattern of patterns) {
       const match = combined.match(pattern);
       if (match) {
-        let link = match[0];
-        link = link.replace(/[<>"'\s].*$/, '');
-        return link;
+        return match[0].replace(/[<>"'\s].*$/, '');
       }
     }
     return '';

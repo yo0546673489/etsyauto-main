@@ -7,13 +7,13 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const ADSPOWER_URL = process.env.ADSPOWER_API_URL || 'http://local.adspower.net:50325';
-const serialNumber = process.argv[2] || '1';
+const userId = process.argv[2] || 'k16kmi55';
 
 async function inspect() {
-  console.log(`Opening AdsPower profile ${serialNumber}...`);
+  console.log(`Opening AdsPower profile ${userId}...`);
 
   const response = await axios.get(`${ADSPOWER_URL}/api/v1/browser/start`, {
-    params: { serial_number: serialNumber }
+    params: { user_id: userId }
   });
 
   if (response.data.code !== 0) {
@@ -29,43 +29,77 @@ async function inspect() {
   const page = context.pages()[0] || await context.newPage();
 
   console.log('Navigating to Etsy messages...');
-  await page.goto('https://www.etsy.com/your/messages', { waitUntil: 'networkidle' });
+  await page.goto('https://www.etsy.com/messages', { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForTimeout(3000);
 
-  console.log('\n=== CONVERSATION LIST HTML STRUCTURE ===\n');
-  const listHtml = await page.evaluate(() => {
-    const container = document.querySelector('[role="main"], main, #content, .messages-page');
-    if (!container) return 'Could not find main container';
-    return Array.from(container.children).slice(0, 5).map(child => {
-      const html = child.outerHTML;
-      return html.length > 500 ? html.substring(0, 500) + '...' : html;
-    }).join('\n---\n');
+  // Dump all links that might be conversations
+  console.log('\n=== CONVERSATION LINKS ON PAGE ===\n');
+  const links = await page.evaluate(() => {
+    return Array.from(document.querySelectorAll('a[href]'))
+      .map(a => ({ href: (a as HTMLAnchorElement).href, text: a.textContent?.trim().substring(0, 60) }))
+      .filter(l => l.href.includes('message') || l.href.includes('convo'));
   });
-  console.log(listHtml);
+  console.log(JSON.stringify(links.slice(0, 10), null, 2));
 
-  console.log('\n=== Trying to click first conversation ===\n');
-  const firstLink = await page.$('a[href*="messages"], a[href*="conversations"]');
-  if (firstLink) {
-    await firstLink.click();
-    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-
-    console.log('\n=== CONVERSATION MESSAGES HTML STRUCTURE ===\n');
-    const msgHtml = await page.evaluate(() => {
-      const container = document.querySelector('[role="main"], main, #content');
-      if (!container) return 'Could not find main container';
-      return Array.from(container.children).slice(0, 10).map(child => {
-        const html = child.outerHTML;
-        return html.length > 500 ? html.substring(0, 500) + '...' : html;
-      }).join('\n---\n');
-    });
-    console.log(msgHtml);
-
-    const textarea = await page.$('textarea');
-    if (textarea) {
-      const attrs = await page.evaluate(el => {
-        return { tag: el.tagName, name: el.getAttribute('name'), id: el.id, class: el.className, placeholder: el.getAttribute('placeholder') };
-      }, textarea);
-      console.log('\n=== TEXTAREA FOUND ===', attrs);
+  // Get raw HTML around first conversation-like element
+  console.log('\n=== FIRST CONVERSATION ROW HTML ===\n');
+  const rowHtml = await page.evaluate(() => {
+    // Try various selectors
+    const selectors = ['li[data-appears-component-tracking-id]', 'li.wt-list-unstyled', '[data-conversation-id]', '.wt-grid__item-xs-12'];
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (el) return `Selector: ${sel}\n` + el.outerHTML.substring(0, 1000);
     }
+    // Fallback: first <li> inside main content
+    const li = document.querySelector('main li, [role="main"] li');
+    if (li) return 'main li:\n' + li.outerHTML.substring(0, 1000);
+    return 'No conversation elements found.\n\nPage title: ' + document.title + '\n\nBody start:\n' + document.body.innerHTML.substring(0, 2000);
+  });
+  console.log(rowHtml);
+
+  console.log('\n=== Clicking first conversation link ===\n');
+  const firstConvoLink = await page.$('a[href*="/messages/"], a[href*="conversations"]');
+  if (firstConvoLink) {
+    const href = await firstConvoLink.getAttribute('href');
+    console.log('Clicking:', href);
+    await firstConvoLink.click();
+    await page.waitForLoadState('domcontentloaded', { timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(3000);
+
+    console.log('\n=== CONVERSATION PAGE URL ===');
+    console.log(page.url());
+
+    console.log('\n=== MESSAGE ELEMENTS ===\n');
+    const msgData = await page.evaluate(() => {
+      const results: string[] = [];
+      // Dump all elements with text and their selectors
+      const allEls = document.querySelectorAll('[class*="message"], [class*="Message"], [data-message-id], [data-message], .wt-text-body-01');
+      allEls.forEach(el => {
+        const text = el.textContent?.trim().substring(0, 100);
+        if (text && text.length > 5) {
+          results.push(`<${el.tagName.toLowerCase()} class="${el.className}" data-message-id="${el.getAttribute('data-message-id') || ''}">\n  ${text}`);
+        }
+      });
+      return results.slice(0, 20).join('\n---\n');
+    });
+    console.log(msgData || 'No message elements found');
+
+    console.log('\n=== TEXTAREA + BUTTONS ===\n');
+    const inputData = await page.evaluate(() => {
+      const results: object[] = [];
+      document.querySelectorAll('textarea, input[type="text"], [contenteditable="true"]').forEach(el => {
+        results.push({ tag: el.tagName, id: el.id, name: (el as HTMLInputElement).name, class: el.className.substring(0, 100), placeholder: el.getAttribute('placeholder') || '' });
+      });
+      document.querySelectorAll('button[type="submit"], button[class*="send"], button[class*="Send"], button[aria-label*="send" i], button[aria-label*="Send"]').forEach(el => {
+        results.push({ tag: 'BUTTON', type: (el as HTMLButtonElement).type, text: el.textContent?.trim(), class: el.className.substring(0, 100), 'aria-label': el.getAttribute('aria-label') || '' });
+      });
+      return results;
+    });
+    console.log(JSON.stringify(inputData, null, 2));
+  } else {
+    console.log('No conversation link found - dumping full page structure');
+    const pageHtml = await page.evaluate(() => document.body.innerHTML.substring(0, 3000));
+    console.log(pageHtml);
   }
 
   console.log('\n=== DONE ===');
@@ -73,7 +107,7 @@ async function inspect() {
   console.log('Update: src/browser/etsyScraper.ts and src/browser/etsySender.ts');
 
   await browser.close();
-  await axios.get(`${ADSPOWER_URL}/api/v1/browser/stop`, { params: { serial_number: serialNumber } });
+  await axios.get(`${ADSPOWER_URL}/api/v1/browser/stop`, { params: { user_id: userId } });
 }
 
 inspect().catch(console.error);

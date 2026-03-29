@@ -41,7 +41,7 @@ export function createSyncWorker(pool: Pool, jobQueue: JobQueue): Worker {
 
       const storeName = await syncEngine.getStoreName(storeId);
       const scraper = new EtsyScraper(page, storeName);
-      const conversation = await scraper.scrapeConversation(conversationUrl);
+      const conversation = await scraper.scrapeConversation(conversationUrl, job.data.buyerName);
       await syncEngine.syncConversation(storeId, conversation);
 
       logger.info(`Synced conversation for store ${storeId}`);
