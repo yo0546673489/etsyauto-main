@@ -1,5 +1,5 @@
 import { Page } from 'playwright';
-import { createCursor, GhostCursor } from 'ghost-cursor-playwright';
+import { createCursor } from 'ghost-cursor-playwright';
 import { logger } from '../utils/logger';
 
 function randomBetween(min: number, max: number): number {
@@ -19,7 +19,8 @@ function humanTypingDelay(): number {
 
 export class HumanBehavior {
   private page: Page;
-  private cursor: GhostCursor;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private cursor: any;
 
   constructor(page: Page) {
     this.page = page;

@@ -63,8 +63,8 @@ export class EmailListener {
   }
 
   private async processNewEmails(): Promise<void> {
-    const unseenMessages = await this.client.search({ seen: false });
-    if (unseenMessages.length === 0) return;
+    const unseenMessages = await this.client.search({ seen: false }) as number[];
+    if (!Array.isArray(unseenMessages) || unseenMessages.length === 0) return;
 
     logger.info(`Found ${unseenMessages.length} new emails`);
 
@@ -73,7 +73,7 @@ export class EmailListener {
         const message = await this.client.fetchOne(uid, { source: true, envelope: true });
         if (!message) continue;
 
-        const parsed = await this.parser.parse(message.source);
+        const parsed = await this.parser.parse(message.source as Buffer);
         if (!parsed || !parsed.isEtsyNotification) continue;
 
         logger.info(`Etsy notification for store: ${parsed.storeEmail}, buyer: ${parsed.buyerName}`);
