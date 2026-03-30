@@ -1,3 +1,6 @@
+# Secrets — never push!
+SECRETS_LOCAL_ONLY.md
+
 # Environment variables
 .env
 .env.local
