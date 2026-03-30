@@ -464,6 +464,7 @@ export interface Product {
   when_made?: string | null;
   materials?: string[] | null;
   cost_usd_cents?: number;
+  views?: number;
   source: string;
   batch_id: string | null;
   created_at: string;

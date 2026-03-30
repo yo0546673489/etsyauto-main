@@ -38,6 +38,7 @@ class ProductResponse(BaseModel):
     price: Optional[int]
     quantity: Optional[int]
     cost_usd_cents: Optional[int] = 0
+    views: Optional[int] = 0
     source: str
     ingest_batch_id: Optional[str]
     created_at: datetime

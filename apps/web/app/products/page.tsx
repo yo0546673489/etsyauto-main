@@ -408,8 +408,8 @@ function ProductsContent() {
                     <th className="text-left py-4 px-5 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider w-[7%] min-w-0">
                       {t('products.table.images')}
                     </th>
-                    <th className="text-left py-4 px-5 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider w-[20%] min-w-0">
-                      {t('products.table.tags')}
+                    <th className="text-left py-4 px-5 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider w-[8%] min-w-0">
+                      צפיות
                     </th>
                     <th className="text-right py-4 px-5 text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider w-[15%] min-w-0 shrink-0">
                       {t('products.table.actions')}
@@ -465,26 +465,12 @@ function ProductsContent() {
                       <td className="py-4 px-5 text-[var(--text-primary)]">
                         {product.images?.length || 0}
                       </td>
-                      <td className="py-4 px-5 min-w-0 overflow-hidden">
-                        <div className="flex flex-wrap gap-1 min-w-0">
-                          {product.tags_raw && product.tags_raw.length > 0 ? (
-                            product.tags_raw.slice(0, 3).map((tag, idx) => (
-                              <span
-                                key={idx}
-                                className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-[var(--primary-bg)] text-[var(--primary)]"
-                              >
-                                {tag}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-sm text-[var(--text-muted)]">{t('products.tags.none')}</span>
-                          )}
-                          {product.tags_raw && product.tags_raw.length > 3 && (
-                            <span className="text-xs text-[var(--text-muted)]">
-                              +{product.tags_raw.length - 3}
-                            </span>
-                          )}
-                        </div>
+                      <td className="py-4 px-5 text-[var(--text-primary)] font-medium">
+                        {(product.views ?? 0) > 0
+                          ? (product.views! >= 1000
+                              ? `${(product.views! / 1000).toFixed(1)}k`
+                              : product.views)
+                          : '—'}
                       </td>
                       <td className="py-4 px-5 shrink-0">
                         <div className="flex items-center justify-end gap-2">
