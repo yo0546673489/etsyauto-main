@@ -23,6 +23,12 @@
 - `docker compose -p etsyauto up -d --build web` — x3 פעמים
 - `docker compose -p etsyauto up -d --build api` — x1
 
+### 📝 מיזוג CLAUDE.md (סוף יום)
+- מוזגו שני קבצי CLAUDE.md לאחד:
+  - **חלק 1** (חדש מ-`D:\הורדות\CLAUDE.md`): הוראות כלליות — מחשבים, טריגרים, סגנון, כללי התנהגות אנושית לאוטומציות, פרוטוקול סגירת יום
+  - **חלק 2** (קיים): תיעוד מלא של הפרויקט — טכנולוגיות, מבנה, מה נעשה, מאיפה להמשיך
+- הקובץ עלה ל-GitHub בהצלחה: commit `17d5fa0`
+
 ## 📁 קבצים שהשתנו:
 
 ### בשרת `/opt/profitly/`
@@ -31,6 +37,15 @@
 ### בקוד המקומי + שרת
 - `apps/web/components/layout/NotificationPanel.tsx` — תיקוני RTL
 - `apps/web/components/layout/TopBar.tsx` — תיקוני RTL בכל dropdown menus
+- `CLAUDE.md` — מוזג: הוראות כלליות + תיעוד מלא של הפרויקט
+
+## 🔄 מאיפה ממשיכים (צ'אט הבא):
+
+**הצעד הראשון**: היכנס ל-`https://yaroncohen.cc/settings` וחבר מחדש את שתי החנויות (FigurineeHaven + CoreBags) דרך Etsy OAuth.
+
+**אחרי חיבור החנויות**: הפעל sync כדי לטעון מוצרים + הזמנות מ-Etsy לדאטהבייס החדש בשרת.
+
+**CLAUDE.md מוזג** — הצ'אט הבא יקרא גם הוראות כלליות וגם תיעוד מלא מאותו קובץ אחד.
 
 ## 🔗 תשתית:
 
