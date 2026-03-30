@@ -407,6 +407,7 @@ async def list_products(
                 "images": p.images,
                 "price": p.price,
                 "cost_usd_cents": getattr(p, "cost_usd_cents", 0) or 0,
+                "views": getattr(p, "views", 0) or 0,
                 "source": p.source,
                 "batch_id": p.ingest_batch_id,
                 "created_at": p.created_at.isoformat()
