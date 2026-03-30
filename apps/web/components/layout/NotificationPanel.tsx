@@ -158,7 +158,7 @@ export function NotificationPanel({ isOpen, onClose, unreadCount, onCountChange 
       <div className="fixed inset-0 z-40" onClick={onClose} />
 
       {/* Panel */}
-      <div className="absolute right-0 mt-2 w-96 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl shadow-2xl z-50 overflow-hidden animate-fade-in">
+      <div className="absolute end-0 mt-2 w-96 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl shadow-2xl z-50 overflow-hidden animate-fade-in">
         {/* Header */}
         <div className="p-4 border-b border-[var(--border-color)] bg-[var(--background)]">
           <div className="flex items-center justify-between mb-3">
@@ -264,7 +264,7 @@ export function NotificationPanel({ isOpen, onClose, unreadCount, onCountChange 
                         </span>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-1 ml-auto">
+                        <div className="flex items-center gap-1 ms-auto">
                           {!notification.read && (
                             <button
                               onClick={(e) => handleMarkAsRead(notification.id, e)}

@@ -52,11 +52,8 @@ const adminNavItems: NavItem[] = [
   { name: 'הודעות',         href: '/messages',         icon: MessageCircle },
 ];
 
-const memberNavItems: NavItem[] = [
-  { name: 'nav.dashboard', href: '/dashboard',  icon: LayoutDashboard },
-  { name: 'nav.products',  href: '/products',   icon: Package },
-  { name: 'nav.orders',    href: '/orders',     icon: ShoppingCart },
-  { name: 'הודעות',        href: '/messages',   icon: MessageCircle },
+const supplierNavItems: NavItem[] = [
+  { name: 'nav.orders', href: '/orders', icon: ShoppingCart },
 ];
 
 const viewerNavItems: NavItem[] = [
@@ -68,10 +65,11 @@ const viewerNavItems: NavItem[] = [
 
 function getNavItems(role?: string): NavItem[] {
   switch (role?.toLowerCase()) {
-    case 'owner':  return ownerNavItems;
-    case 'admin':  return adminNavItems;
-    case 'member': return memberNavItems;
-    default:       return viewerNavItems;
+    case 'owner':    return ownerNavItems;
+    case 'admin':    return adminNavItems;
+    case 'supplier': return supplierNavItems;
+    case 'viewer':   return viewerNavItems;
+    default:         return viewerNavItems;
   }
 }
 

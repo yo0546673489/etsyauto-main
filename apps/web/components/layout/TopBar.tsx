@@ -150,7 +150,7 @@ export function TopBar() {
                   className="fixed inset-0 z-40"
                   onClick={() => setShowShopMenu(false)}
                 />
-                <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl shadow-xl z-50 overflow-hidden">
+                <div className="absolute end-0 mt-2 w-72 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl shadow-xl z-50 overflow-hidden">
                   <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
                     <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       {t('topbar.connectedShops')}
@@ -252,7 +252,7 @@ export function TopBar() {
                   className="fixed inset-0 z-40"
                   onClick={() => setShowLanguageMenu(false)}
                 />
-                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl shadow-xl z-50 overflow-hidden">
+                <div className="absolute end-0 mt-2 w-48 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl shadow-xl z-50 overflow-hidden">
                   <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700">
                     <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       {t('topbar.changeLanguage')}
@@ -350,7 +350,7 @@ export function TopBar() {
                   className="fixed inset-0 z-40"
                   onClick={() => setShowUserMenu(false)}
                 />
-                <div className="absolute right-0 mt-2 w-64 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl shadow-xl z-50 overflow-hidden">
+                <div className="absolute end-0 mt-2 w-64 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl shadow-xl z-50 overflow-hidden">
                   {/* User Info */}
                   <div className="p-4 border-b border-[var(--border-color)]">
                     <div className="flex items-center gap-3">

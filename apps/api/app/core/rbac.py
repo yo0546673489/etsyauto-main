@@ -117,8 +117,7 @@ ROLE_PERMISSIONS: dict[Role, Set[Permission]] = {
     Role.SUPPLIER: {
         Permission.READ_ORDER,
         Permission.UPDATE_FULFILLMENT,
-        Permission.READ_PRODUCT,
-        Permission.CREATE_PRODUCT,
+        # Supplier sees orders only — no products, no revenue/analytics
     },
 }
 

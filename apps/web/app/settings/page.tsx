@@ -16,7 +16,7 @@ import { ConfirmModal } from '@/components/modals/ConfirmModal';
 import { NotificationModal } from '@/components/modals/NotificationModal';
 import {
   Settings as SettingsIcon, Store, Link as LinkIcon, Unlink, CheckCircle, CheckCircle2, XCircle,
-  AlertCircle, AlertTriangle, Loader2, Building2, Users, Bell, UserPlus, Trash2, Shield, Eye, Edit, Crown, X, DollarSign, ChevronDown, MessageSquare,
+  AlertCircle, AlertTriangle, Loader2, Building2, Users, Bell, UserPlus, Trash2, Shield, Eye, Edit, Crown, X, DollarSign, ChevronDown, MessageSquare, Package,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MessagingActivationWizard } from '@/components/settings/MessagingActivationWizard';
@@ -427,13 +427,13 @@ function SettingsContent() {
     owner: 'text-[var(--warning)] bg-[var(--warning-bg)]',
     admin: 'text-[var(--primary)] bg-[var(--primary-bg)]',
     viewer: 'text-[var(--text-muted)] bg-[var(--background)]',
-    member: 'text-[var(--success)] bg-[var(--success-bg)]',
+    supplier: 'text-[var(--success)] bg-[var(--success-bg)]',
   }[role] || 'text-[var(--text-muted)] bg-[var(--background)]');
   const getRoleIcon = (role: string) => ({
     owner: <Crown className="w-4 h-4" />,
     admin: <Shield className="w-4 h-4" />,
     viewer: <Eye className="w-4 h-4" />,
-    member: <Users className="w-4 h-4" />,
+    supplier: <Package className="w-4 h-4" />,
   }[role] || <Users className="w-4 h-4" />);
   const getShopAccessLabel = (member: TeamMember) => {
     if (member.role === 'owner' || member.role === 'admin') return t('settings.allShops');
@@ -733,15 +733,15 @@ function SettingsContent() {
                 </div>
               </div>
               <div className="flex gap-4 p-4 bg-[var(--background)] rounded-xl border border-[var(--border-color)]">
-                <div className={cn('flex items-center justify-center w-10 h-10 rounded-full flex-shrink-0', getRoleColor('member'))}>
-                  {getRoleIcon('member')}
+                <div className={cn('flex items-center justify-center w-10 h-10 rounded-full flex-shrink-0', getRoleColor('supplier'))}>
+                  {getRoleIcon('supplier')}
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-[var(--text-primary)]">{t('settings.roles.member')}</h3>
+                    <h3 className="font-semibold text-[var(--text-primary)]">ספק</h3>
                   </div>
                   <p className="text-sm text-[var(--text-muted)]">
-                    {t('settings.roles.memberDescription')}
+                    גישה להזמנות בלבד. יכול לראות פרטי הזמנות ולמלא מספרי מעקב. אינו רואה מחירים, מוצרים או נתוני חנות.
                   </p>
                 </div>
               </div>
@@ -926,8 +926,8 @@ function SettingsContent() {
           <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
             <div className="flex items-center justify-between mb-6"><h2 className="text-xl font-bold text-[var(--text-primary)]">{t('settings.inviteMember')}</h2><button onClick={() => setShowInviteModal(false)} className="text-[var(--text-muted)]"><X className="w-5 h-5" /></button></div>
             <div className="space-y-4">
-              <div><label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">{t('common.email')}</label><input type="email" value={inviteForm.email} onChange={e => setInviteForm({ ...inviteForm, email: e.target.value })} className="w-full px-4 py-3 bg-[var(--background)] border border-[var(--border-color)] rounded-lg text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" /></div>
-              <div><label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">{t('common.name')}</label><input type="text" value={inviteForm.name} onChange={e => setInviteForm({ ...inviteForm, name: e.target.value })} className="w-full px-4 py-3 bg-[var(--background)] border border-[var(--border-color)] rounded-lg text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" /></div>
+              <div><label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">{t('common.name')}</label><input type="text" value={inviteForm.name} onChange={e => setInviteForm({ ...inviteForm, name: e.target.value })} placeholder="שם פרטי" className="w-full px-4 py-3 bg-[var(--background)] border border-[var(--border-color)] rounded-lg text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" /></div>
+              <div><label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">{t('common.email')}</label><input type="email" value={inviteForm.email} onChange={e => setInviteForm({ ...inviteForm, email: e.target.value })} placeholder="example@email.com" className="w-full px-4 py-3 bg-[var(--background)] border border-[var(--border-color)] rounded-lg text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]" /></div>
               <div>
                 <label className="block text-sm font-medium text-[var(--text-secondary)] mb-2">{t('common.role')}</label>
                 <select
@@ -935,9 +935,9 @@ function SettingsContent() {
                   onChange={e => setInviteForm({ ...inviteForm, role: e.target.value })}
                   className="w-full px-4 py-3 bg-[var(--background)] border border-[var(--border-color)] rounded-lg text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
                 >
-                  <option value="admin">{t('settings.roles.admin')}</option>
-                  <option value="viewer">{t('settings.roles.viewer')}</option>
-                  <option value="member">{t('settings.roles.member')}</option>
+                  <option value="admin">מנהל — גישה מלאה לכל</option>
+                  <option value="viewer">צופה — צפייה בלבד</option>
+                  <option value="supplier">ספק — הזמנות בלבד</option>
                 </select>
               </div>
             </div>
