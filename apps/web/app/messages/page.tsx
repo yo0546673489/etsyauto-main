@@ -1,10 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import {
-  msgConversationsApi, msgMessagesApi, msgRepliesApi,
-  MsgConversation, MsgMessage,
+  msgConversationsApi, msgMessagesApi, msgRepliesApi, msgStoresApi,
+  MsgConversation, MsgMessage, MsgStore,
 } from '@/lib/messages-api';
 import { useShop } from '@/lib/shop-context';
 import MsgAvatar from '@/components/messages/MsgAvatar';
@@ -25,7 +25,8 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function MessagesPage() {
-  const { selectedShopIds } = useShop();
+  const { selectedShops, shops } = useShop();
+  const [msgStores, setMsgStores] = useState<MsgStore[]>([]);
   const [conversations, setConversations] = useState<MsgConversation[]>([]);
   const [convLoading, setConvLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -41,6 +42,29 @@ export default function MessagesPage() {
   const [apiError, setApiError] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Load messages-system stores once for name-based mapping
+  useEffect(() => {
+    msgStoresApi.getAll().then(setMsgStores).catch(() => {});
+  }, []);
+
+  // Map selected main-app shops → messages-system store IDs by name matching
+  const selectedMsgStoreIds = useMemo<Set<number> | null>(() => {
+    if (!msgStores.length || selectedShops.length === 0) return null;
+    // All shops selected → show everything
+    if (selectedShops.length >= shops.length) return null;
+    const ids = new Set<number>();
+    for (const shop of selectedShops) {
+      const shopName = shop.display_name.toLowerCase();
+      for (const ms of msgStores) {
+        const msName = ms.store_name.toLowerCase();
+        if (msName.includes(shopName) || shopName.includes(msName)) {
+          ids.add(ms.id);
+        }
+      }
+    }
+    return ids.size > 0 ? ids : null;
+  }, [selectedShops, shops, msgStores]);
 
   const loadConversations = useCallback(async () => {
     setConvLoading(true);
@@ -129,7 +153,12 @@ export default function MessagesPage() {
     }
   };
 
-  const unreadCount = conversations.filter(c => c.status === 'new').length;
+  const displayedConversations = useMemo(() => {
+    if (!selectedMsgStoreIds) return conversations;
+    return conversations.filter(c => selectedMsgStoreIds.has(c.store_id));
+  }, [conversations, selectedMsgStoreIds]);
+
+  const unreadCount = displayedConversations.filter(c => c.status === 'new').length;
 
   return (
     <DashboardLayout>
@@ -188,13 +217,13 @@ export default function MessagesPage() {
               </div>
             ) : convLoading ? (
               <MsgSkeleton count={7} />
-            ) : conversations.length === 0 ? (
+            ) : displayedConversations.length === 0 ? (
               <div className="p-6 text-center">
                 <MessageCircle className="w-12 h-12 text-gray-200 mx-auto mb-3" />
                 <p className="text-sm text-gray-400">אין שיחות להצגה</p>
               </div>
             ) : (
-              conversations.map(conv => (
+              displayedConversations.map(conv => (
                 <MsgConversationItem
                   key={conv.id}
                   conv={conv}
