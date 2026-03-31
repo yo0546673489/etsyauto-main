@@ -149,11 +149,22 @@ function OwnerDashboardContent() {
   const shopViews      = todayVisits > 0 ? todayVisits : (isToday ? null : totalViews);
   const changes        = stats.changes || { products: 0, customers: 0, orders: 0, listings: 0 };
 
-  // Format currency: always use ₪ symbol, support negative values
+  // Format currency using shop's native currency (payout_currency from Etsy)
+  // Values from API are already in decimal (divided by 100 server-side)
+  const shopCurrency = stats?.payout_currency || 'ILS';
   const formatCurrency = (amount: number) => {
-    const abs = Math.abs(amount);
-    const formatted = abs.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    return amount < 0 ? `-₪${formatted}` : `₪${formatted}`;
+    try {
+      const formatted = new Intl.NumberFormat('he-IL', {
+        style: 'currency',
+        currency: shopCurrency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(Math.abs(amount));
+      return amount < 0 ? `-${formatted}` : formatted;
+    } catch {
+      const str = Math.abs(amount).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      return amount < 0 ? `-${shopCurrency} ${str}` : `${shopCurrency} ${str}`;
+    }
   };
 
   // Format large numbers: 1234 → 1.2k
