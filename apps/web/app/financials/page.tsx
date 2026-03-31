@@ -97,7 +97,7 @@ function formatWithConversion(
 /** Short date display */
 function shortDate(iso: string | null): string {
   if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('en-US', {
+  return new Date(iso).toLocaleDateString('he-IL', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -130,53 +130,53 @@ function timeAgo(iso: string | null): string {
 function entryTypeLabel(t: string): string {
   const map: Record<string, string> = {
     // Normalized categories (already mapped)
-    sale: 'Sale',
-    refund: 'Refund',
-    fee: 'Fee',
-    advertising: 'Advertising',
-    shipping_label: 'Shipping Label',
-    subscription: 'Subscription',
-    processing_fee: 'Processing Fee',
-    transaction_fee: 'Transaction Fee',
-    listing_fee: 'Listing Fee',
-    offsite_ads: 'Offsite Ads',
-    vat_fee: 'VAT Fee',
-    other: 'Other',
+    sale: 'מכירה',
+    refund: 'החזר',
+    fee: 'עמלה',
+    advertising: 'פרסום',
+    shipping_label: 'תווית משלוח',
+    subscription: 'מנוי',
+    processing_fee: 'עמלת עיבוד',
+    transaction_fee: 'עמלת עסקה',
+    listing_fee: 'עמלת פרסום',
+    offsite_ads: 'פרסום חיצוני',
+    vat_fee: 'מע"מ',
+    other: 'אחר',
 
     // Raw Etsy payment/revenue types
-    PAYMENT_GROSS: 'Payment Received',
-    payment_gross: 'Payment Received',
-    PAYMENT: 'Payment',
-    payment: 'Payment',
-    DEPOSIT: 'Deposit',
-    deposit: 'Deposit',
-    DISBURSE: 'Payout',
-    DISBURSE2: 'Payout',
-    disburse: 'Payout',
-    payout: 'Payout',
-    Payout: 'Payout',
+    PAYMENT_GROSS: 'תשלום התקבל',
+    payment_gross: 'תשלום התקבל',
+    PAYMENT: 'תשלום',
+    payment: 'תשלום',
+    DEPOSIT: 'הפקדה',
+    deposit: 'הפקדה',
+    DISBURSE: 'שחרור כספים',
+    DISBURSE2: 'שחרור כספים',
+    disburse: 'שחרור כספים',
+    payout: 'שחרור כספים',
+    Payout: 'שחרור כספים',
 
     // Raw Etsy fee types
-    PAYMENT_PROCESSING_FEE: 'Processing Fee',
-    payment_processing_fee: 'Processing Fee',
-    transaction: 'Transaction Fee',
-    TRANSACTION: 'Transaction Fee',
-    listing: 'Listing Fee',
-    LISTING: 'Listing Fee',
-    prolist: 'Promoted Listing',
-    PROLIST: 'Promoted Listing',
-    offsite_ads_fee: 'Offsite Ads Fee',
-    OFFSITE_ADS_FEE: 'Offsite Ads Fee',
-    DEPOSIT_FEE: 'Deposit Fee',
-    deposit_fee: 'Deposit Fee',
+    PAYMENT_PROCESSING_FEE: 'עמלת עיבוד',
+    payment_processing_fee: 'עמלת עיבוד',
+    transaction: 'עמלת עסקה',
+    TRANSACTION: 'עמלת עסקה',
+    listing: 'עמלת פרסום',
+    LISTING: 'עמלת פרסום',
+    prolist: 'רישום מקודם',
+    PROLIST: 'רישום מקודם',
+    offsite_ads_fee: 'עמלת פרסום חיצוני',
+    OFFSITE_ADS_FEE: 'עמלת פרסום חיצוני',
+    DEPOSIT_FEE: 'עמלת הפקדה',
+    deposit_fee: 'עמלת הפקדה',
 
     // Renewal types
-    renew_sold_auto: 'Auto Renewal (Sold)',
-    renew_sold: 'Renewal (Sold)',
-    renew_expired: 'Renewal (Expired)',
-    RENEW_SOLD_AUTO: 'Auto Renewal (Sold)',
-    RENEW_SOLD: 'Renewal (Sold)',
-    RENEW_EXPIRED: 'Renewal (Expired)',
+    renew_sold_auto: 'חידוש אוטומטי (נמכר)',
+    renew_sold: 'חידוש (נמכר)',
+    renew_expired: 'חידוש (פג תוקף)',
+    RENEW_SOLD_AUTO: 'חידוש אוטומטי (נמכר)',
+    RENEW_SOLD: 'חידוש (נמכר)',
+    RENEW_EXPIRED: 'חידוש (פג תוקף)',
 
     // Refund types
     REFUND: 'Refund',
@@ -187,24 +187,25 @@ function entryTypeLabel(t: string): string {
 
     // Tax types
     vat_tax_ep: 'VAT Tax',
-    VAT_TAX_EP: 'VAT Tax',
-    TAX: 'Tax',
-    tax: 'Tax',
+    VAT_TAX_EP: 'מע"מ',
+    TAX: 'מס',
+    tax: 'מס',
 
     // Shipping
-    SHIPPING_LABEL: 'Shipping Label',
-    postage: 'Postage',
-    POSTAGE: 'Postage',
+    SHIPPING_LABEL: 'תווית משלוח',
+    postage: 'דמי משלוח',
+    POSTAGE: 'דמי משלוח',
 
     // Subscription / onboarding
-    seller_onboarding_fee: 'Subscription Fee',
-    seller_onboarding_fee_payment: 'Subscription Payment',
-    SUBSCRIPTION: 'Subscription',
+    seller_onboarding_fee: 'דמי מנוי',
+    seller_onboarding_fee_payment: 'תשלום מנוי',
+    SUBSCRIPTION: 'מנוי',
+    listing_renewal: 'חידוש מוצר',
 
     // Reserve
-    reserve: 'Reserve',
-    Reserve: 'Reserve',
-    RESERVE: 'Reserve',
+    reserve: 'עתודה',
+    Reserve: 'עתודה',
+    RESERVE: 'עתודה',
   };
   if (map[t]) return map[t];
   // Fallback: convert snake_case/UPPER_CASE to Title Case
@@ -675,29 +676,29 @@ function FinancialSummaryCards({
   }[] = [
     {
       id: 'payout',
-      title: 'Upcoming Payout',
+      title: 'תשלום קרוב',
       value: payoutValue,
-      subtitle: 'Available for payout',
+      subtitle: 'זמין לתשלום',
       positive: payoutPositive,
       icon: Banknote,
       accentClass: 'border-emerald-200 dark:border-emerald-800',
     },
     {
       id: 'balance',
-      title: 'Current Balance',
+      title: 'יתרה נוכחית',
       value: balanceValue,
       subtitle: payout?.reserve_held
-        ? `Reserve held: ${formatWithConversion(payout.reserve_held, payout.currency, payout.converted_reserve_held, payout.converted_currency)}`
-        : 'Etsy Payments wallet',
+        ? `עתודה: ${formatWithConversion(payout.reserve_held, payout.currency, payout.converted_reserve_held, payout.converted_currency)}`
+        : 'ארנק Etsy Payments',
       positive: balancePositive,
       icon: Wallet,
       accentClass: 'border-blue-200 dark:border-blue-800',
     },
     {
       id: 'profit',
-      title: 'Net Profit',
+      title: 'רווח נקי',
       value: profitValue,
-      subtitle: 'After all fees & refunds',
+      subtitle: 'לאחר כל העמלות והחזרות',
       positive: profitPositive,
       icon: profitPositive !== false ? TrendingUp : TrendingDown,
       accentClass:
@@ -792,9 +793,9 @@ function FinancialDrawer({
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            {drawer === 'payout' && 'Upcoming Payout'}
-            {drawer === 'balance' && 'Current Balance'}
-            {drawer === 'profit' && `Net Profit — ${period}`}
+            {drawer === 'payout' && 'תשלום קרוב'}
+            {drawer === 'balance' && 'יתרה נוכחית'}
+            {drawer === 'profit' && `רווח נקי — ${period}`}
           </h2>
           <button
             type="button"
@@ -809,16 +810,16 @@ function FinancialDrawer({
           {drawer === 'payout' && payout && (
             <>
               <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 p-5">
-                <p className="text-sm text-emerald-700 dark:text-emerald-400 font-medium mb-1">Available for Payout</p>
+                <p className="text-sm text-emerald-700 dark:text-emerald-400 font-medium mb-1">זמין לתשלום</p>
                 <p className="text-3xl font-bold text-emerald-700 dark:text-emerald-300">
                   {formatWithConversion(payout.available_for_payout, payout.currency, payout.converted_available_for_payout, payout.converted_currency)}
                 </p>
               </div>
               <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
                 {[
-                  { label: 'Current Balance', value: formatWithConversion(payout.current_balance, payout.currency, payout.converted_current_balance, payout.converted_currency), note: 'Total in your Etsy Payments account' },
-                  { label: 'Reserve Held', value: formatWithConversion(payout.reserve_held, payout.currency, payout.converted_reserve_held, payout.converted_currency), note: 'Funds temporarily withheld by Etsy', valueClass: payout.reserve_held > 0 ? 'text-amber-600 dark:text-amber-400' : undefined },
-                  { label: 'Available for Payout', value: formatWithConversion(payout.available_for_payout, payout.currency, payout.converted_available_for_payout, payout.converted_currency), note: 'Next scheduled disbursement', valueClass: 'text-emerald-600 dark:text-emerald-400 font-bold' },
+                  { label: 'יתרה נוכחית', value: formatWithConversion(payout.current_balance, payout.currency, payout.converted_current_balance, payout.converted_currency), note: 'סך הכל בחשבון Etsy Payments' },
+                  { label: 'עתודה', value: formatWithConversion(payout.reserve_held, payout.currency, payout.converted_reserve_held, payout.converted_currency), note: 'כספים שמוחזקים זמנית על ידי Etsy', valueClass: payout.reserve_held > 0 ? 'text-amber-600 dark:text-amber-400' : undefined },
+                  { label: 'זמין לתשלום', value: formatWithConversion(payout.available_for_payout, payout.currency, payout.converted_available_for_payout, payout.converted_currency), note: 'תשלום מתוכנן הבא', valueClass: 'text-emerald-600 dark:text-emerald-400 font-bold' },
                 ].map((row, i) => (
                   <div key={i} className={cn('flex items-center justify-between px-4 py-3', i > 0 && 'border-t border-gray-100 dark:border-gray-800')}>
                     <div>
@@ -831,7 +832,7 @@ function FinancialDrawer({
               </div>
               {payout.recent_payouts?.length ? (
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">Recent Payouts</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">תשלומים אחרונים</p>
                   <div className="space-y-2">
                     {payout.recent_payouts.map((p, i) => (
                       <div key={i} className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-800/50 px-4 py-2.5">
@@ -843,24 +844,24 @@ function FinancialDrawer({
                 </div>
               ) : null}
               <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
-                Etsy disburses available funds on your configured payout schedule (daily or weekly). Reserve-held funds are released automatically once eligibility criteria are met.
+                Etsy משחררת כספים לפי לוח הזמנים שהגדרת (יומי או שבועי). כספי עתודה משוחררים אוטומטית כשעומדים בקריטריוני הזכאות.
               </p>
             </>
           )}
           {drawer === 'balance' && payout && (
             <>
               <div className="rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-5">
-                <p className="text-sm text-blue-700 dark:text-blue-400 font-medium mb-1">Current Balance</p>
+                <p className="text-sm text-blue-700 dark:text-blue-400 font-medium mb-1">יתרה נוכחית</p>
                 <p className="text-3xl font-bold text-blue-700 dark:text-blue-300">
                   {formatWithConversion(payout.current_balance, payout.currency, payout.converted_current_balance, payout.converted_currency)}
                 </p>
-                {payout.as_of && <p className="text-xs text-blue-500 dark:text-blue-500 mt-1">As of {shortDate(payout.as_of)}</p>}
+                {payout.as_of && <p className="text-xs text-blue-500 dark:text-blue-500 mt-1">נכון ל-{shortDate(payout.as_of)}</p>}
               </div>
               <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
                 {[
-                  { label: 'Available for Payout', value: formatWithConversion(payout.available_for_payout, payout.currency, payout.converted_available_for_payout, payout.converted_currency), note: 'Ready to be disbursed', valueClass: 'text-emerald-600 dark:text-emerald-400' },
-                  { label: 'Reserve Held', value: formatWithConversion(payout.reserve_held, payout.currency, payout.converted_reserve_held, payout.converted_currency), note: 'Temporarily withheld by Etsy', valueClass: payout.reserve_held > 0 ? 'text-amber-600 dark:text-amber-400' : undefined },
-                  { label: 'Total Balance', value: formatWithConversion(payout.current_balance, payout.currency, payout.converted_current_balance, payout.converted_currency), note: 'Available + Reserve', valueClass: 'font-bold text-gray-900 dark:text-gray-100' },
+                  { label: 'זמין לתשלום', value: formatWithConversion(payout.available_for_payout, payout.currency, payout.converted_available_for_payout, payout.converted_currency), note: 'מוכן לשחרור', valueClass: 'text-emerald-600 dark:text-emerald-400' },
+                  { label: 'עתודה', value: formatWithConversion(payout.reserve_held, payout.currency, payout.converted_reserve_held, payout.converted_currency), note: 'מוחזק זמנית על ידי Etsy', valueClass: payout.reserve_held > 0 ? 'text-amber-600 dark:text-amber-400' : undefined },
+                  { label: 'סך יתרה', value: formatWithConversion(payout.current_balance, payout.currency, payout.converted_current_balance, payout.converted_currency), note: 'זמין + עתודה', valueClass: 'font-bold text-gray-900 dark:text-gray-100' },
                 ].map((row, i) => (
                   <div key={i} className={cn('flex items-center justify-between px-4 py-3', i > 0 && 'border-t border-gray-100 dark:border-gray-800', i === 2 && 'bg-gray-50 dark:bg-gray-800/50')}>
                     <div>
@@ -872,25 +873,25 @@ function FinancialDrawer({
                 ))}
               </div>
               <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed">
-                <strong className="text-gray-500">Pending</strong> means funds from recent sales that haven&apos;t cleared yet — typically 3–7 days after the sale. They&apos;re included in your balance but not yet available for payout.
+                <strong className="text-gray-500">ממתין</strong> — כספים ממכירות אחרונות שעדיין לא סולקו, בדרך כלל 3-7 ימים לאחר המכירה. כלולים ביתרה אך עדיין לא זמינים לתשלום.
               </p>
             </>
           )}
           {drawer === 'profit' && summary && (
             <>
               <div className={cn('rounded-xl p-5 border', summary.net_profit >= 0 ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800' : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800')}>
-                <p className={cn('text-sm font-medium mb-1', summary.net_profit >= 0 ? 'text-purple-700 dark:text-purple-400' : 'text-red-700 dark:text-red-400')}>Net Profit — {period}</p>
+                <p className={cn('text-sm font-medium mb-1', summary.net_profit >= 0 ? 'text-purple-700 dark:text-purple-400' : 'text-red-700 dark:text-red-400')}>רווח נקי — {period}</p>
                 <p className={cn('text-3xl font-bold', summary.net_profit >= 0 ? 'text-purple-700 dark:text-purple-300' : 'text-red-700 dark:text-red-300')}>
                   {formatWithConversion(summary.net_profit, summary.currency, summary.converted_net_profit, summary.converted_currency)}
                 </p>
               </div>
               <div className="rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
                 {[
-                  { label: 'Gross Revenue', value: formatWithConversion(summary.revenue, summary.currency, summary.converted_revenue, summary.converted_currency), valueClass: 'text-emerald-600 dark:text-emerald-400', note: 'Sales + shipping collected' },
-                  { label: 'Etsy Fees', value: `−${formatWithConversion(summary.etsy_fees, summary.currency, summary.converted_etsy_fees, summary.converted_currency)}`, valueClass: 'text-red-500', note: 'Transaction, processing, listing fees' },
-                  { label: 'Marketing Spend', value: `−${formatWithConversion(summary.advertising_expenses, summary.currency, summary.converted_advertising_expenses, summary.converted_currency)}`, valueClass: 'text-red-500', note: 'Etsy Ads + Offsite Ads' },
-                  { label: 'Refunds', value: summary.refunds > 0 ? `−${formatWithConversion(summary.refunds, summary.currency, summary.converted_refunds, summary.converted_currency)}` : '—', valueClass: summary.refunds > 0 ? 'text-red-500' : 'text-gray-400', note: 'Orders refunded to buyers' },
-                  { label: 'Net Profit', value: formatWithConversion(summary.net_profit, summary.currency, summary.converted_net_profit, summary.converted_currency), valueClass: summary.net_profit >= 0 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-red-600 dark:text-red-400 font-bold', note: 'Revenue minus all costs', highlight: true },
+                  { label: 'הכנסה גולמית', value: formatWithConversion(summary.revenue, summary.currency, summary.converted_revenue, summary.converted_currency), valueClass: 'text-emerald-600 dark:text-emerald-400', note: 'מכירות + משלוח שנגבה' },
+                  { label: 'עמלות Etsy', value: `−${formatWithConversion(summary.etsy_fees, summary.currency, summary.converted_etsy_fees, summary.converted_currency)}`, valueClass: 'text-red-500', note: 'עמלות עסקה, עיבוד, פרסום' },
+                  { label: 'הוצאות שיווק', value: `−${formatWithConversion(summary.advertising_expenses, summary.currency, summary.converted_advertising_expenses, summary.converted_currency)}`, valueClass: 'text-red-500', note: 'Etsy Ads + פרסום חיצוני' },
+                  { label: 'החזרות', value: summary.refunds > 0 ? `−${formatWithConversion(summary.refunds, summary.currency, summary.converted_refunds, summary.converted_currency)}` : '—', valueClass: summary.refunds > 0 ? 'text-red-500' : 'text-gray-400', note: 'הזמנות שהוחזרו ללקוחות' },
+                  { label: 'רווח נקי', value: formatWithConversion(summary.net_profit, summary.currency, summary.converted_net_profit, summary.converted_currency), valueClass: summary.net_profit >= 0 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-red-600 dark:text-red-400 font-bold', note: 'הכנסה פחות כל ההוצאות', highlight: true },
                 ].map((row, i) => (
                   <div key={i} className={cn('flex items-center justify-between px-4 py-3', i > 0 && 'border-t border-gray-100 dark:border-gray-800', (row as { highlight?: boolean }).highlight && 'bg-gray-50 dark:bg-gray-800/50')}>
                     <div>
@@ -903,7 +904,7 @@ function FinancialDrawer({
               </div>
               {summary.revenue > 0 && (
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">Revenue Breakdown</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3">פירוט הכנסות</p>
                   <div className="w-full h-3 rounded-full overflow-hidden flex">
                     {[
                       { pct: Math.max(0, (summary.net_profit / summary.revenue) * 100), cls: 'bg-emerald-400', label: 'Profit' },
@@ -915,7 +916,7 @@ function FinancialDrawer({
                     ))}
                   </div>
                   <div className="flex flex-wrap gap-3 mt-2">
-                    {[{ label: 'Profit', cls: 'bg-emerald-400' }, { label: 'Fees', cls: 'bg-purple-400' }, { label: 'Ads', cls: 'bg-pink-400' }, { label: 'Refunds', cls: 'bg-red-400' }].map((item) => (
+                    {[{ label: 'רווח', cls: 'bg-emerald-400' }, { label: 'עמלות', cls: 'bg-purple-400' }, { label: 'פרסום', cls: 'bg-pink-400' }, { label: 'החזרות', cls: 'bg-red-400' }].map((item) => (
                       <span key={item.label} className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
                         <span className={cn('w-2.5 h-2.5 rounded-sm inline-block', item.cls)} />
                         {item.label}
@@ -1396,27 +1397,6 @@ export default function FinancialsPage() {
               </button>
             )}
 
-            {/* Sync status and last updated */}
-            {syncStatus && Object.keys(syncStatus.shops).length > 0 && (
-              <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-600">
-                <Clock className="w-3.5 h-3.5 flex-shrink-0" />
-                {(() => {
-                  const timestamps = Object.values(syncStatus.shops).flatMap((s) => [
-                    s.ledger_last_sync_at ? new Date(s.ledger_last_sync_at).getTime() : 0,
-                    s.payment_last_sync_at ? new Date(s.payment_last_sync_at).getTime() : 0,
-                  ]).filter((t) => t > 0);
-                  const latest = timestamps.length > 0 ? Math.max(...timestamps) : 0;
-                  const hasError = Object.values(syncStatus.shops).some(
-                    (s) => s.ledger_last_error || s.payment_last_error
-                  );
-                  return latest > 0 ? (
-                    <span className={hasError ? 'text-amber-600 dark:text-amber-400' : ''}>
-                      {t('financials.lastSynced')} {timeAgo(new Date(latest).toISOString())}
-                    </span>
-                  ) : null;
-                })()}
-              </span>
-            )}
 
             {/* Sync */}
             {user?.role && ['owner', 'admin'].includes(user.role.toLowerCase()) && (
