@@ -38,6 +38,16 @@ export class EtsyScraper {
     await this.human.humanNavigate(conversationUrl);
     await this.page.waitForLoadState('domcontentloaded', { timeout: 20000 }).catch(() => {});
     await randomDelay(1500, 3500);
+
+    // Capture the real Etsy URL after potential redirect (ablink → etsy.com/messages/...)
+    const realUrl = this.page.url();
+    const finalUrl = (realUrl.includes('etsy.com') && (realUrl.includes('/messages/') || realUrl.includes('/conversations/')))
+      ? realUrl
+      : conversationUrl;
+    if (finalUrl !== conversationUrl) {
+      logger.info(`Resolved redirect: ${conversationUrl.substring(0, 60)}... → ${finalUrl}`);
+    }
+
     await this.human.randomMouseMovement();
 
     const scraped = await this.page.evaluate((storeName: string) => {
@@ -91,7 +101,7 @@ export class EtsyScraper {
     logger.info(`Scraped ${scraped.messages.length} messages from conversation`);
 
     return {
-      conversationUrl,
+      conversationUrl: finalUrl,
       customerName,
       messages: scraped.messages as ScrapedMessage[],
     };

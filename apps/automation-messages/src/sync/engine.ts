@@ -10,9 +10,10 @@ export class SyncEngine {
     this.pool = pool;
   }
 
-  private hashMessage(msg: ScrapedMessage): string {
+  private hashMessage(msg: ScrapedMessage, conversationId?: number): string {
+    // Hash by content only (not timestamp) to avoid duplicates when same message is scraped twice
     return createHash('sha256')
-      .update(`${msg.senderName}|${msg.senderType}|${msg.messageText}|${msg.sentAt}`)
+      .update(`${conversationId || 0}|${msg.senderType}|${msg.messageText.trim()}`)
       .digest('hex');
   }
 
@@ -27,13 +28,28 @@ export class SyncEngine {
       await client.query('BEGIN');
 
       let conversationId: number;
+      // Search by exact URL OR by the real Etsy URL pattern (handles ablink → etsy.com redirect)
       const existing = await client.query(
-        'SELECT id FROM conversations WHERE store_id = $1 AND etsy_conversation_url = $2',
-        [storeId, scraped.conversationUrl]
+        `SELECT id, etsy_conversation_url FROM conversations
+         WHERE store_id = $1 AND (
+           etsy_conversation_url = $2
+           OR (etsy_conversation_url LIKE '%ablink%' AND customer_name = $3 AND $3 NOT IN ('Unknown Customer', 'Unknown Buyer', ''))
+         )
+         ORDER BY id DESC LIMIT 1`,
+        [storeId, scraped.conversationUrl, scraped.customerName]
       );
 
       if (existing.rows.length > 0) {
         conversationId = existing.rows[0].id;
+        // Update URL to real Etsy URL if we now have a better one
+        if (existing.rows[0].etsy_conversation_url !== scraped.conversationUrl &&
+            scraped.conversationUrl.includes('etsy.com')) {
+          await client.query(
+            'UPDATE conversations SET etsy_conversation_url = $1 WHERE id = $2',
+            [scraped.conversationUrl, conversationId]
+          );
+          logger.info(`Updated conversation ${conversationId} URL to real Etsy URL`);
+        }
       } else {
         const inserted = await client.query(
           `INSERT INTO conversations (store_id, etsy_conversation_url, customer_name, status)
@@ -45,7 +61,7 @@ export class SyncEngine {
 
       let newMessages = 0;
       for (const msg of scraped.messages) {
-        const hash = this.hashMessage(msg);
+        const hash = this.hashMessage(msg, conversationId);
         const result = await client.query(
           `INSERT INTO messages (conversation_id, sender_type, sender_name, message_text, sent_at, message_hash)
            VALUES ($1, $2, $3, $4, $5, $6)
@@ -61,7 +77,10 @@ export class SyncEngine {
         await client.query(
           `UPDATE conversations
            SET last_message_text = $1, last_message_at = $2,
-               customer_name = COALESCE(NULLIF($3, ''), customer_name),
+               customer_name = CASE
+                 WHEN $3 NOT IN ('', 'Unknown Customer', 'Unknown Buyer') THEN $3
+                 ELSE customer_name
+               END,
                status = CASE WHEN $4 = 'customer' AND status != 'closed' THEN 'new' ELSE status END,
                updated_at = NOW()
            WHERE id = $5`,

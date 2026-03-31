@@ -64,5 +64,6 @@ export function createReplyWorker(pool: Pool, jobQueue: JobQueue): Worker {
   }, {
     connection: getRedisConnection(),
     concurrency: 2,
+    lockDuration: 300000,
   });
 }
