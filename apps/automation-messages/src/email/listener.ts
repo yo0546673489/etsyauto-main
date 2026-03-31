@@ -13,7 +13,14 @@ export class EmailListener {
   private running: boolean = false;
 
   constructor(resolver: StoreResolver, jobQueue: JobQueue) {
-    this.client = new ImapFlow({
+    this.client = this.createClient();
+    this.parser = new EmailParser();
+    this.resolver = resolver;
+    this.jobQueue = jobQueue;
+  }
+
+  private createClient(): ImapFlow {
+    return new ImapFlow({
       host: config.imap.host,
       port: config.imap.port,
       secure: true,
@@ -23,9 +30,6 @@ export class EmailListener {
       },
       logger: false,
     });
-    this.parser = new EmailParser();
-    this.resolver = resolver;
-    this.jobQueue = jobQueue;
   }
 
   async start(): Promise<void> {
@@ -54,7 +58,9 @@ export class EmailListener {
         logger.error('IMAP listener error, reconnecting in 10s...', error);
         await new Promise(r => setTimeout(r, 10000));
         try {
+          this.client = this.createClient();
           await this.client.connect();
+          logger.info('IMAP reconnected successfully');
         } catch (e) {
           logger.error('Reconnect failed', e);
         }

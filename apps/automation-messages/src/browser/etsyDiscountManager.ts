@@ -59,21 +59,19 @@ export class EtsyDiscountManager {
       await this.page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
       await randomDelay(2000, 3500);
 
-      // בדוק שלא נחסמנו
+      // Log page title and URL to confirm we're on the right page
+      const pageTitle = await this.page.title().catch(() => 'unknown');
       const currentUrl = this.page.url();
-      if (currentUrl.includes('sign_in') || currentUrl.includes('login')) {
-        logger.error('Not logged in to Etsy');
+      logger.info(`After nav - Title: "${pageTitle}" | URL: ${currentUrl}`);
+
+      // בדוק שלא נחסמנו — Etsy משתמש ב-/signin (ללא underscore)
+      if (currentUrl.includes('signin') || currentUrl.includes('sign_in') || currentUrl.includes('login')) {
+        logger.error(`Not logged in to Etsy — redirected to sign-in page. Profile needs re-authentication.`);
         return false;
       }
 
       await this.human.randomMouseMovement();
       await randomDelay(500, 1000);
-
-      // Log page title and URL to confirm we're on the right page
-      try {
-        const pageTitle = await this.page.title().catch(() => 'unknown');
-        logger.info(`After nav - Title: "${pageTitle}" | URL: ${this.page.url()}`);
-      } catch (e) { /* ignore */ }
 
       // שלב 2: סוג הנחה → "Percentage off"
       logger.info('Setting discount type to percentage...');
