@@ -202,13 +202,13 @@ function OwnerDashboardContent() {
         />
         {/* 2nd: כסף משוחרר לבנק */}
         <StatCard
-          badge={depositAmount === null || depositAmount === undefined ? 'לא זמין' : depositAmount === 0 ? 'אין' : 'זמין'}
-          badgeColor={depositAmount && depositAmount > 0 ? 'text-[#006d43]' : 'text-gray-400'}
+          badge={depositAmount && depositAmount > 0 ? 'זמין' : 'עדכני'}
+          badgeColor={depositAmount && depositAmount > 0 ? 'text-[#006d43]' : 'text-[#006d43]'}
           icon={CreditCard}
           iconBg="bg-purple-50"
           iconColor="text-purple-500"
           label="כסף משוחרר לבנק"
-          value={depositAmount === null || depositAmount === undefined ? '—' : formatCurrency(depositAmount)}
+          value={formatCurrency(depositAmount ?? 0)}
         />
         {/* 3rd: מספר הזמנות */}
         <StatCard
