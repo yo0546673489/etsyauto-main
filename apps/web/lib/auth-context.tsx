@@ -145,11 +145,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Cookies are set by the backend response — just update React state
       setUser(nextUser);
 
-      if (redirectAfter && redirectAfter.startsWith('/')) {
-        router.push(redirectAfter);
-      } else {
-        router.push(getRoleDashboardPath(nextUser.role));
-      }
+      // Hard reload so all contexts (shops, stats, etc.) re-initialize fresh
+      const dest = (redirectAfter && redirectAfter.startsWith('/'))
+        ? redirectAfter
+        : getRoleDashboardPath(nextUser.role);
+      window.location.href = dest;
     } catch (err: any) {
       setError(getSafeAuthError(err, 'Login failed. Please try again.'));
       throw err;
@@ -241,14 +241,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       // Post-login onboarding for new users
-      if (response.user.is_new_user) {
-        // TODO: Show onboarding modal or redirect to onboarding flow
-        // For now, redirect to dashboard with a welcome message
-        router.push('/dashboard?welcome=true');
-      } else {
-        // Existing user - redirect to dashboard
-        router.push('/dashboard');
-      }
+      // Hard reload so all contexts re-initialize fresh after Google login
+      window.location.href = response.user.is_new_user ? '/dashboard?welcome=true' : '/dashboard';
     } catch (err) {
       setError(getSafeAuthError(err, 'Google sign in failed. Please try again.'));
       throw err;
