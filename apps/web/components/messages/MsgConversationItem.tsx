@@ -18,9 +18,7 @@ function formatTime(ts: string | null): string {
   return d.toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit' });
 }
 
-// Extract clean customer name — remove "X from ShopName" pattern
 function cleanName(name: string): string {
-  // "יאיר from RawRootsFurniture" → "יאיר"
   const fromIdx = name.indexOf(' from ');
   if (fromIdx > 0) return name.substring(0, fromIdx).trim();
   return name;
@@ -31,33 +29,32 @@ export default function MsgConversationItem({ conv, isSelected, onClick }: Props
   const displayName = cleanName(conv.customer_name);
 
   return (
-    <button
-      onClick={onClick}
-      dir="rtl"
-      className={`w-full text-right flex items-center gap-3 px-4 py-3.5 transition-colors border-b border-gray-100
-        ${isSelected ? 'bg-[#006d43]/10' : 'hover:bg-gray-50'}`}
-    >
-      <MsgAvatar name={displayName} online={conv.status === 'open'} />
-      <div className="flex-1 min-w-0">
-        {/* Row 1: name + time */}
-        <div className="flex items-center justify-between mb-0.5">
-          <span className="text-xs text-gray-400 flex-shrink-0">{formatTime(conv.last_message_at)}</span>
-          <span className={`text-sm truncate mr-2 ${isNew ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>
+    <div className="px-3 py-1.5">
+      <button
+        onClick={onClick}
+        dir="rtl"
+        className={`w-full text-right flex items-center gap-3 px-4 py-3 rounded-2xl transition-all
+          ${isSelected
+            ? 'bg-[#006d43]/15 shadow-sm ring-1 ring-[#006d43]/20'
+            : 'hover:bg-gray-100/80'
+          }`}
+      >
+        {/* Avatar */}
+        <div className="relative flex-shrink-0">
+          <MsgAvatar name={displayName} size="md" online={conv.status === 'open'} />
+          {isNew && (
+            <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#006d43] border-2 border-white" />
+          )}
+        </div>
+
+        {/* Name + time only */}
+        <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+          <span className={`text-sm truncate ${isNew ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>
             {displayName}
           </span>
+          <span className="text-[11px] text-gray-400 flex-shrink-0">{formatTime(conv.last_message_at)}</span>
         </div>
-        {/* Row 2: preview + unread dot */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            {isNew && (
-              <span className="w-2 h-2 rounded-full bg-[#006d43] flex-shrink-0" />
-            )}
-          </div>
-          <p className={`text-xs truncate text-right flex-1 ${isNew ? 'text-gray-600 font-medium' : 'text-gray-400'}`}>
-            {conv.last_message_text || '—'}
-          </p>
-        </div>
-      </div>
-    </button>
+      </button>
+    </div>
   );
 }
