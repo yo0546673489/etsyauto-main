@@ -12,7 +12,7 @@ import MsgConversationItem from '@/components/messages/MsgConversationItem';
 import MsgBubble from '@/components/messages/MsgBubble';
 import MsgDateSeparator from '@/components/messages/MsgDateSeparator';
 import MsgSkeleton from '@/components/messages/MsgSkeleton';
-import { MessageCircle, Search, Send, ChevronLeft, Smile, ChevronDown, Bot } from 'lucide-react';
+import { MessageCircle, Send, ChevronLeft, Smile, ChevronDown, Bot } from 'lucide-react';
 
 type PendingMsg = MsgMessage & { _pending?: boolean; _failed?: boolean };
 
@@ -217,23 +217,11 @@ export default function MessagesPage() {
                 <Bot className={`w-4 h-4 ${globalAiMode ? 'text-[#006d43]' : 'text-gray-400'}`} />
                 <span className="text-sm font-medium">מענה AI אוטומטי</span>
               </div>
-              {/* Toggle Switch */}
-              <div className={`relative w-10 h-5 rounded-full transition-colors ${globalAiMode ? 'bg-[#006d43]' : 'bg-gray-300'}`}>
+              {/* Toggle Switch — dir=ltr so circle moves right when ON */}
+              <div dir="ltr" className={`relative w-10 h-5 rounded-full transition-colors flex-shrink-0 ${globalAiMode ? 'bg-[#006d43]' : 'bg-gray-300'}`}>
                 <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${globalAiMode ? 'translate-x-5' : 'translate-x-0.5'}`} />
               </div>
             </button>
-            {/* Search */}
-            <div className="relative mb-3">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="חיפוש..."
-                dir="rtl"
-                className="w-full pr-9 pl-3 py-2 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[#006d43]/20 focus:border-[#006d43]/40"
-              />
-            </div>
             {/* Status filter */}
             <div className="relative">
               <select
