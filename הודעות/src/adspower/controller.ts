@@ -10,7 +10,7 @@ interface AdsPowerBrowserInfo {
 interface AdsPowerResponse {
   code: number;
   msg: string;
-  data: AdsPowerBrowserInfo;
+  data: any;
 }
 
 export class AdsPowerController {
@@ -23,6 +23,7 @@ export class AdsPowerController {
     this.apiKey = config.adspower.apiKey;
     this.client = axios.create({
       baseURL: this.apiUrl,
+      timeout: 30000,
       headers: this.apiKey ? { 'api-key': this.apiKey } : {},
     });
   }
@@ -37,8 +38,28 @@ export class AdsPowerController {
     }
   }
 
+  private fixWsHost(info: AdsPowerBrowserInfo): AdsPowerBrowserInfo | null {
+    // בדיקה שיש ws תקין
+    if (!info || !info.ws || !info.ws.puppeteer) {
+      return null;
+    }
+    // AdsPower מחזיר ws://127.0.0.1:PORT — אם רץ על שרת אחר מחליפים ל-IP האמיתי
+    try {
+      const apiHost = new URL(this.apiUrl).hostname;
+      if (apiHost !== '127.0.0.1' && apiHost !== 'localhost' && apiHost !== 'local.adspower.net') {
+        info.ws.puppeteer = info.ws.puppeteer.replace('127.0.0.1', apiHost);
+        info.webdriver = info.webdriver || '';
+      }
+    } catch { /* URL parse failed, keep as-is */ }
+    return info;
+  }
+
   async openProfile(userId: string): Promise<AdsPowerBrowserInfo | null> {
     try {
+      // קודם סגור אם פתוח
+      await this.closeProfile(userId);
+      await new Promise(r => setTimeout(r, 1000));
+
       const response = await this.client.get<AdsPowerResponse>(
         '/api/v1/browser/start',
         { params: { user_id: userId } }
@@ -46,10 +67,13 @@ export class AdsPowerController {
 
       if (response.data.code === 0) {
         logger.info(`Profile ${userId} opened successfully`);
-        return response.data.data;
+        return this.fixWsHost(response.data.data);
       }
 
-      if (response.data.msg && response.data.msg.includes('already')) {
+      // פרופיל כבר פתוח — נסה לקבל את החיבור הקיים
+      const msg = (response.data.msg || '').toLowerCase();
+      if (msg.includes('already') || msg.includes('limit open') || msg.includes('opened')) {
+        logger.info(`Profile ${userId} already open, getting active connection`);
         return await this.getActiveProfile(userId);
       }
 
@@ -67,7 +91,9 @@ export class AdsPowerController {
         '/api/v1/browser/active',
         { params: { user_id: userId } }
       );
-      if (response.data.code === 0) return response.data.data;
+      if (response.data.code === 0 && response.data.data?.ws?.puppeteer) {
+        return this.fixWsHost(response.data.data);
+      }
       return null;
     } catch (error) {
       return null;

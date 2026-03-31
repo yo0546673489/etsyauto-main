@@ -3,6 +3,7 @@ import { chromium } from 'playwright';
 import { config } from '../../config';
 import { AdsPowerController } from '../../adspower/controller';
 import { EtsyScraper } from '../../browser/etsyScraper';
+import { ListingScraper, extractListingUrls } from '../../browser/listingScraper';
 import { SyncEngine } from '../../sync/engine';
 import { JobQueue, SyncConversationJobData } from '../setup';
 import { Pool } from 'pg';
@@ -43,6 +44,14 @@ export function createSyncWorker(pool: Pool, jobQueue: JobQueue): Worker {
       const scraper = new EtsyScraper(page, storeName);
       const conversation = await scraper.scrapeConversation(conversationUrl, job.data.buyerName);
       await syncEngine.syncConversation(storeId, conversation);
+
+      // Scrape product previews from listing URLs found in messages (automation, not Etsy API)
+      const listingUrls = extractListingUrls(conversation.messages);
+      if (listingUrls.length > 0) {
+        logger.info(`Found ${listingUrls.length} listing URL(s) — scraping previews...`);
+        const listingScraper = new ListingScraper(page);
+        await listingScraper.scrapeAndSave(pool, listingUrls);
+      }
 
       logger.info(`Synced conversation for store ${storeId}`);
     } catch (error) {

@@ -10,6 +10,7 @@ import { createReviewReplyWorker } from './queue/workers/replyToReview';
 import { createDiscountWorker } from './queue/workers/executeDiscount';
 import { createApiServer } from './api/server';
 import { DiscountRotationScheduler } from './scheduler/discountRotation';
+import { DiscountTaskExecutor } from './scheduler/discountTaskExecutor';
 import { logger } from './utils/logger';
 
 async function main() {
@@ -19,9 +20,24 @@ async function main() {
   await pool.query('SELECT 1');
   logger.info('Database connected');
 
+  // חיבור ל-etsy_platform (Python DB) לביצוע משימות הנחה
+  let platformPool: Pool | undefined;
+  if (config.platformDb.url) {
+    platformPool = new Pool({ connectionString: config.platformDb.url });
+    try {
+      await platformPool.query('SELECT 1');
+      logger.info('Platform database connected');
+    } catch (e: any) {
+      logger.warn(`Platform database connection failed: ${e.message} — discount tasks from Python API disabled`);
+      platformPool = undefined;
+    }
+  } else {
+    logger.warn('PLATFORM_DATABASE_URL not configured — discount tasks from Python API disabled');
+  }
+
   const fs = await import('fs');
   const path = await import('path');
-  for (const migration of ['001_initial.sql', '002_reviews_discounts.sql']) {
+  for (const migration of ['001_initial.sql', '002_reviews_discounts.sql', '003_listing_previews.sql']) {
     const migrationPath = path.join(__dirname, 'db/migrations', migration);
     if (fs.existsSync(migrationPath)) {
       const sql = fs.readFileSync(migrationPath, 'utf-8');
@@ -42,7 +58,7 @@ async function main() {
 
   // Workers — ביקורות + הנחות
   const reviewReplyWorker = createReviewReplyWorker(pool);
-  const discountWorker = createDiscountWorker(pool);
+  const discountWorker = createDiscountWorker(pool, platformPool);
 
   logger.info('Workers started');
 
@@ -52,6 +68,14 @@ async function main() {
   const discountScheduler = new DiscountRotationScheduler(pool, jobQueue.discountQueue, resolver);
   discountScheduler.start();
   logger.info('Discount rotation scheduler started');
+
+  // Executor — משימות הנחה מה-API של Python (etsy_platform)
+  let discountTaskExecutor: DiscountTaskExecutor | undefined;
+  if (platformPool && config.platformDb.url) {
+    discountTaskExecutor = new DiscountTaskExecutor(config.platformDb.url, jobQueue.discountQueue);
+    discountTaskExecutor.start();
+    logger.info('Discount task executor started (polling etsy_platform)');
+  }
 
   if (config.imap.user && config.imap.password) {
     const emailListener = new EmailListener(resolver, jobQueue);
@@ -64,6 +88,7 @@ async function main() {
   const shutdown = async () => {
     logger.info('Shutting down...');
     discountScheduler.stop();
+    if (discountTaskExecutor) discountTaskExecutor.stop();
     await syncWorker.close();
     await initialSyncWorker.close();
     await replyWorker.close();
@@ -71,6 +96,7 @@ async function main() {
     await discountWorker.close();
     await fastify.close();
     await pool.end();
+    if (platformPool) await platformPool.end().catch(() => {});
     process.exit(0);
   };
 

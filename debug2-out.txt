@@ -1,0 +1,5 @@
+Error: browserType.connectOverCDP: Timeout 60000ms exceeded.
+Call log:
+[2m  - <ws connecting> ws://127.0.0.1:52134/devtools/browser/a2c59fb1-dfd8-4426-b374-32547b0d3cdb[22m
+[2m  - <ws connected> ws://127.0.0.1:52134/devtools/browser/a2c59fb1-dfd8-4426-b374-32547b0d3cdb[22m
+

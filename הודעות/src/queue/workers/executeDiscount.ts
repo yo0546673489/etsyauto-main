@@ -7,15 +7,16 @@ import { EtsyDiscountManager, SaleConfig } from '../../browser/etsyDiscountManag
 import { logger } from '../../utils/logger';
 
 interface DiscountJob {
-  taskId: number;          // ID מטבלת discount_tasks
+  taskId: number;           // ID מטבלת discount_tasks (etsy_messages)
   storeId: number;
-  serialNumber: string;    // AdsPower profile
+  serialNumber: string;     // AdsPower profile
   taskType: 'create_sale' | 'end_sale';
-  saleConfig?: SaleConfig; // רק ל-create_sale
-  saleName?: string;       // רק ל-end_sale
+  saleConfig?: SaleConfig;  // רק ל-create_sale
+  saleName?: string;        // רק ל-end_sale
+  platformTaskId?: number;  // ID מטבלת discount_tasks (etsy_platform) — אם הגיע מ-DiscountTaskExecutor
 }
 
-export function createDiscountWorker(pool: Pool) {
+export function createDiscountWorker(pool: Pool, platformPool?: Pool) {
   const adspower = new AdsPowerController();
 
   function getRedisConnection() {
@@ -27,17 +28,40 @@ export function createDiscountWorker(pool: Pool) {
     }
   }
 
+  async function updatePlatformTask(platformTaskId: number, success: boolean, errorMessage?: string) {
+    if (!platformPool) return;
+    try {
+      if (success) {
+        await platformPool.query(
+          "UPDATE discount_tasks SET status = 'completed', completed_at = NOW() WHERE id = $1",
+          [platformTaskId]
+        );
+      } else {
+        await platformPool.query(
+          "UPDATE discount_tasks SET status = 'failed', error_message = $2, retry_count = retry_count + 1 WHERE id = $1",
+          [platformTaskId, errorMessage || 'Unknown error']
+        );
+      }
+    } catch (e: any) {
+      logger.error(`Failed to update platform task ${platformTaskId}: ${e.message}`);
+    }
+  }
+
   const worker = new Worker(
     'discount-execute',
     async (job: Job<DiscountJob>) => {
       const data = job.data;
       logger.info(`Processing discount job ${data.taskId}: ${data.taskType}`);
 
-      // עדכון סטטוס
-      await pool.query(
-        'UPDATE discount_tasks SET status = $1, attempts = attempts + 1 WHERE id = $2',
-        ['processing', data.taskId]
-      );
+      // עדכון סטטוס ב-etsy_messages (אם קיים)
+      try {
+        await pool.query(
+          'UPDATE discount_tasks SET status = $1, attempts = attempts + 1 WHERE id = $2',
+          ['processing', data.taskId]
+        );
+      } catch {
+        // discount_tasks בסכמת Node.js אולי לא קיימת — לא קריטי
+      }
 
       // פתיחת פרופיל AdsPower
       const browserInfo = await adspower.openProfile(data.serialNumber);
@@ -62,10 +86,19 @@ export function createDiscountWorker(pool: Pool) {
         }
 
         if (success) {
-          await pool.query(
-            'UPDATE discount_tasks SET status = $1, executed_at = NOW() WHERE id = $2',
-            ['completed', data.taskId]
-          );
+          // עדכון etsy_messages
+          try {
+            await pool.query(
+              'UPDATE discount_tasks SET status = $1, executed_at = NOW() WHERE id = $2',
+              ['completed', data.taskId]
+            );
+          } catch { /* לא קריטי */ }
+
+          // עדכון etsy_platform (Python DB)
+          if (data.platformTaskId) {
+            await updatePlatformTask(data.platformTaskId, true);
+          }
+
           logger.info(`Discount task ${data.taskId} completed successfully`);
         } else {
           throw new Error('Discount operation verification failed');
@@ -85,10 +118,17 @@ export function createDiscountWorker(pool: Pool) {
 
   worker.on('failed', async (job, err) => {
     if (job) {
-      await pool.query(
-        'UPDATE discount_tasks SET status = $1, error_message = $2 WHERE id = $3',
-        ['failed', err.message, job.data.taskId]
-      );
+      try {
+        await pool.query(
+          'UPDATE discount_tasks SET status = $1, error_message = $2 WHERE id = $3',
+          ['failed', err.message, job.data.taskId]
+        );
+      } catch { /* לא קריטי */ }
+
+      // עדכון etsy_platform
+      if (job.data.platformTaskId) {
+        await updatePlatformTask(job.data.platformTaskId, false, err.message);
+      }
     }
     logger.error(`Discount job failed: ${err.message}`);
   });

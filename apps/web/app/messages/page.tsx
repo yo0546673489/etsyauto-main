@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import {
-  msgConversationsApi, msgMessagesApi, msgRepliesApi, msgStoresApi,
-  MsgConversation, MsgMessage, MsgStore,
+  msgConversationsApi, msgMessagesApi, msgRepliesApi,
+  MsgConversation, MsgMessage,
 } from '@/lib/messages-api';
+import { useShop } from '@/lib/shop-context';
 import MsgAvatar from '@/components/messages/MsgAvatar';
 import MsgConversationItem from '@/components/messages/MsgConversationItem';
 import MsgBubble from '@/components/messages/MsgBubble';
@@ -24,7 +25,7 @@ const statusLabels: Record<string, string> = {
 };
 
 export default function MessagesPage() {
-  const [stores, setStores] = useState<MsgStore[]>([]);
+  const { selectedShopIds } = useShop();
   const [conversations, setConversations] = useState<MsgConversation[]>([]);
   const [convLoading, setConvLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -34,7 +35,6 @@ export default function MessagesPage() {
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
   const [sendFailed, setSendFailed] = useState(false);
-  const [storeFilter, setStoreFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [showMobileChat, setShowMobileChat] = useState(false);
@@ -42,28 +42,29 @@ export default function MessagesPage() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Load stores once
-  useEffect(() => {
-    msgStoresApi.getAll().then(setStores).catch(() => {});
-  }, []);
-
-  // Load conversations
+  // Load conversations — filtered by globally selected shops
   const loadConversations = useCallback(async () => {
     setConvLoading(true);
     setApiError(false);
     try {
       const params: any = {};
-      if (storeFilter) params.store_id = parseInt(storeFilter);
       if (statusFilter) params.status = statusFilter;
       if (search) params.search = search;
+
+      // Always fetch all then filter client-side by selected shop IDs
       const data = await msgConversationsApi.getAll(params);
-      setConversations(data);
+
+      if (selectedShopIds.length > 0) {
+        setConversations(data.filter(c => selectedShopIds.includes(c.store_id)));
+      } else {
+        setConversations(data);
+      }
     } catch {
       setApiError(true);
     } finally {
       setConvLoading(false);
     }
-  }, [storeFilter, statusFilter, search]);
+  }, [selectedShopIds, statusFilter, search]);
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
 
@@ -167,22 +168,12 @@ export default function MessagesPage() {
                 dir="rtl"
               />
             </div>
-            {/* Filters */}
+            {/* Status filter only — store filter removed (uses global store selector) */}
             <div className="flex gap-2">
-              <select
-                value={storeFilter}
-                onChange={e => setStoreFilter(e.target.value)}
-                className="flex-1 px-2 py-1.5 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--background)] text-[var(--text-secondary)] focus:outline-none"
-              >
-                <option value="">כל החנויות</option>
-                {stores.map(s => (
-                  <option key={s.id} value={String(s.id)}>{s.store_name || `חנות ${s.store_number}`}</option>
-                ))}
-              </select>
               <select
                 value={statusFilter}
                 onChange={e => setStatusFilter(e.target.value)}
-                className="flex-1 px-2 py-1.5 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--background)] text-[var(--text-secondary)] focus:outline-none"
+                className="w-full px-2 py-1.5 text-xs rounded-lg border border-[var(--border-color)] bg-[var(--background)] text-[var(--text-secondary)] focus:outline-none"
               >
                 <option value="">כל הסטטוסים</option>
                 <option value="new">חדש</option>
@@ -278,21 +269,36 @@ export default function MessagesPage() {
                   </div>
                 ) : (
                   <>
-                    {messages.map((msg, i) => (
-                      <div key={msg.id}>
-                        {(i === 0 || !isSameDay(messages[i - 1].sent_at, msg.sent_at)) && (
-                          <MsgDateSeparator date={msg.sent_at} />
-                        )}
-                        <MsgBubble
-                          senderType={msg.sender_type}
-                          senderName={msg.sender_name}
-                          text={msg.message_text}
-                          sentAt={msg.sent_at}
-                          pending={msg._pending}
-                          failed={msg._failed}
-                        />
-                      </div>
-                    ))}
+                    {(() => {
+                      const seenUrls = new Set<string>();
+                      return messages.map((msg, i) => {
+                        // Extract etsy listing URLs from message text
+                        const textUrls = (
+                          msg.message_text.match(/https?:\/\/[^\s]*etsy\.com\/listing\/\d+[^\s]*/gi) || []
+                        ).map((u: string) => u.startsWith('http') ? u : 'https://' + u);
+                        const newCardUrls = textUrls.filter((u: string) => !seenUrls.has(u));
+                        newCardUrls.forEach((u: string) => seenUrls.add(u));
+
+                        return (
+                          <div key={msg.id}>
+                            {(i === 0 || !isSameDay(messages[i - 1].sent_at, msg.sent_at)) && (
+                              <MsgDateSeparator date={msg.sent_at} />
+                            )}
+                            <MsgBubble
+                              senderType={msg.sender_type}
+                              senderName={msg.sender_name}
+                              text={msg.message_text}
+                              sentAt={msg.sent_at}
+                              pending={msg._pending}
+                              failed={msg._failed}
+                              imageUrls={msg.image_urls || []}
+                              cardUrls={newCardUrls}
+                              cardData={msg.card_data}
+                            />
+                          </div>
+                        );
+                      });
+                    })()}
                     <div ref={bottomRef} />
                   </>
                 )}

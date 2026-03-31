@@ -1,0 +1,56 @@
+Starting E2E test...
+=== E2E Test: Gmail → AdsPower → Etsy → DB → Profitly ===
+
+
+[1] Connecting to IMAP...
+  Found 113 Etsy emails total
+  UID 1216: Subject: Re: Etsy Conversation with Flore Collas
+  → Using this email (67427 bytes)
+
+[2] Parsing email...
+  Store email (To): kbqrgd@gmail.com
+  Buyer name:       Flore Collas
+  Conversation URL: https://ablink.account.etsy.com/uni/ss/c/u001.MtDHjk2ApAbblCiO4Ltr6SnparR9gKE0rn4aMSJRkY8uOwE-euyeZ4KUXJVZCUWD_UbCOzr32eyeBgVbBKBFfF8RIuW4hCNwMJwGaN91vGTOuBGrVnE4l-ERIIfmyBPwVE0DYQLxecVKEzbvFPLkjNHTeKXrvDoSPvlbdAeERQ6khvbrpJcf38vWkVhH8OBYwuGZMjBi9B306HMVcj3r4YUXv4nE54NqboYHvPYq9i7UAHlIuuUL2ynLKVMK4I4aJorxGUAeN4ToUdx03esgzEZWbkOSLZwSsoGBsyvhh1K13P5uENObPgGxcqVXL--A0S0fyzWf6vyD7GUQDi_u__WJNIAZ2BuebIqp9x5J-mayDUSgTM1xk9OJc05R-2AnZZXuiP5t-CMVrmYik-Z1PVZdJcdoGXCepn3GYtTFbkSxbyV9TN12Ozk1JixbMdtQvY6U7IQzOvWCvh7Nb02xmnj_wPiPu_sQHowBO_C48es/4pd/g_ckiOGFQvy6omG9s7Wihw/h15/h001.ow40es6luWqO4G1BuBAgEzQwev6KKrovy7o3Quv6gwk
+  Subject:          Re: Etsy Conversation with Flore Collas
+
+[3] Resolving store from email...
+  Store 9: חנות 9 (profile: k17owhpp)
+
+[4] Opening AdsPower profile k17owhpp...
+  Closing any existing session for k17owhpp...
+[2026-03-30T11:17:34.641Z] [INFO] Profile k17owhpp opened successfully
+  Browser WS: ws://127.0.0.1:57045/devtools/browser/ba003f71-e08e-458a-8976-6062e2a5a63f
+  Connecting Playwright over CDP...
+  Navigating to conversation: https://ablink.account.etsy.com/uni/ss/c/u001.MtDHjk2ApAbblCiO4Ltr6SnparR9gKE0rn4aMSJRkY8uOwE-euyeZ4KUXJVZCUWD_UbCOzr32eyeBgVbBKBFfF8RIuW4hCNwMJwGaN91vGTOuBGrVnE4l-ERIIfmyBPwVE0DYQLxecVKEzbvFPLkjNHTeKXrvDoSPvlbdAeERQ6khvbrpJcf38vWkVhH8OBYwuGZMjBi9B306HMVcj3r4YUXv4nE54NqboYHvPYq9i7UAHlIuuUL2ynLKVMK4I4aJorxGUAeN4ToUdx03esgzEZWbkOSLZwSsoGBsyvhh1K13P5uENObPgGxcqVXL--A0S0fyzWf6vyD7GUQDi_u__WJNIAZ2BuebIqp9x5J-mayDUSgTM1xk9OJc05R-2AnZZXuiP5t-CMVrmYik-Z1PVZdJcdoGXCepn3GYtTFbkSxbyV9TN12Ozk1JixbMdtQvY6U7IQzOvWCvh7Nb02xmnj_wPiPu_sQHowBO_C48es/4pd/g_ckiOGFQvy6omG9s7Wihw/h15/h001.ow40es6luWqO4G1BuBAgEzQwev6KKrovy7o3Quv6gwk
+  (Human behavior: random mouse movements, realistic delays...)
+[2026-03-30T11:17:57.909Z] [INFO] Scraped 6 messages from conversation
+
+  ✓ Scraped conversation:
+    Customer: Flore Collas
+    Messages: 6
+    [1] CUSTOMER: "Svp"
+    [2] CUSTOMER: "Bonjour je suis désolée de vous annoncer ça mais j'ai ouvert les yeux aujourd'hu..."
+    [3] STORE: "welcome dear if you need the dress in future please let me know i will love to h..."
+    [4] CUSTOMER: "Bonjour merciTranslate to English"
+    [5] STORE: "Welcome!"
+    [6] CUSTOMER: "C est trop gentil merci ❤❤❤Translate to English"
+
+[5] Saving to DB...
+[2026-03-30T11:17:57.957Z] [INFO] Synced conversation 2: 6 new messages
+  ✓ Conversation saved: DB id=2, status=new
+    Customer: Flore Collas
+    Messages in DB: 6
+    Last message: C est trop gentil merci ❤❤❤Translate to English
+
+[6] Notifying Profitly API...
+  Payload sent to Profitly (6 messages)
+  (Profitly is at localhost:8000 — if not running, this is a warning not an error)
+
+=== ✓ E2E Test PASSED ===
+Store: 9 (kbqrgd@gmail.com)
+Conversation: https://ablink.account.etsy.com/uni/ss/c/u001.MtDHjk2ApAbblCiO4Ltr6SnparR9gKE0rn4aMSJRkY8uOwE-euyeZ4KUXJVZCUWD_UbCOzr32eyeBgVbBKBFfF8RIuW4hCNwMJwGaN91vGTOuBGrVnE4l-ERIIfmyBPwVE0DYQLxecVKEzbvFPLkjNHTeKXrvDoSPvlbdAeERQ6khvbrpJcf38vWkVhH8OBYwuGZMjBi9B306HMVcj3r4YUXv4nE54NqboYHvPYq9i7UAHlIuuUL2ynLKVMK4I4aJorxGUAeN4ToUdx03esgzEZWbkOSLZwSsoGBsyvhh1K13P5uENObPgGxcqVXL--A0S0fyzWf6vyD7GUQDi_u__WJNIAZ2BuebIqp9x5J-mayDUSgTM1xk9OJc05R-2AnZZXuiP5t-CMVrmYik-Z1PVZdJcdoGXCepn3GYtTFbkSxbyV9TN12Ozk1JixbMdtQvY6U7IQzOvWCvh7Nb02xmnj_wPiPu_sQHowBO_C48es/4pd/g_ckiOGFQvy6omG9s7Wihw/h15/h001.ow40es6luWqO4G1BuBAgEzQwev6KKrovy7o3Quv6gwk
+Messages saved: 6
+
+Cleaning up...
+[2026-03-30T11:18:06.251Z] [INFO] Profile k17owhpp closed
+E2E test exited with code: 0

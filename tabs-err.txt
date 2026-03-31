@@ -1,0 +1,22 @@
+node:internal/modules/cjs/loader:1228
+  throw err;
+  ^
+
+Error: Cannot find module 'playwright'
+Require stack:
+- C:\etsy\check-tabs.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1225:15)
+    at Module._load (node:internal/modules/cjs/loader:1051:27)
+    at Module.require (node:internal/modules/cjs/loader:1311:19)
+    at require (node:internal/modules/helpers:179:18)
+    at Object.<anonymous> (C:\etsy\check-tabs.js:2:22)
+    at Module._compile (node:internal/modules/cjs/loader:1469:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1548:10)
+    at Module.load (node:internal/modules/cjs/loader:1288:32)
+    at Module._load (node:internal/modules/cjs/loader:1104:12)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:173:12) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [ 'C:\\etsy\\check-tabs.js' ]
+}
+
+Node.js v20.18.1

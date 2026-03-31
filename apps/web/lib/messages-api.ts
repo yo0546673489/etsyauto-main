@@ -13,6 +13,14 @@ export interface MsgConversation {
   status: 'new' | 'open' | 'answered' | 'closed';
 }
 
+export interface MsgCardData {
+  image?: string;
+  title?: string;
+  salePrice?: string;
+  origPrice?: string;
+  url?: string;
+}
+
 export interface MsgMessage {
   id: number;
   conversation_id: number;
@@ -20,6 +28,8 @@ export interface MsgMessage {
   sender_name: string;
   message_text: string;
   sent_at: string;
+  image_urls?: string[];
+  card_data?: MsgCardData;
 }
 
 export interface MsgStore {

@@ -1,0 +1,17 @@
+Screenshot: C:\etsy\debug-all.png
+
+=== Elements with conversation-related classes ===
+
+[class*="convo"]: 52 elements
+  First: LI: Inbox
+  Class: wt-display-flex-xs convo-inbox-v2-tag sidebar-tag-container
+
+[class*="message"]: 4 elements
+  First: DIV: Who are you writing to?
+  Class: wt-validation__message wt-validation__message--is-hidden
+
+[class*="conversation"]: 2 elements
+  First: DIV: MessagesReply preferencesTemporary auto-replyUse this when y
+  Class: conversations-subapp wt-display-flex-xs wt-flex-direction-column-xs
+
+Conversation HTML snippet saved to C:\etsy\debug-conv-html.txt

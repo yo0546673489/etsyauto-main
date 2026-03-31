@@ -14,7 +14,10 @@ from app.models.discounts import DiscountRule, DiscountTask
 class DiscountsService:
 
     def get_rules(self, db: Session, shop_id: int, status: Optional[str] = None) -> List[DiscountRule]:
-        query = db.query(DiscountRule).filter(DiscountRule.shop_id == shop_id)
+        query = db.query(DiscountRule).filter(
+            DiscountRule.shop_id == shop_id,
+            DiscountRule.status != 'deleted',  # סינון כללים שנמחקו
+        )
         if status:
             query = query.filter(DiscountRule.status == status)
         return query.order_by(desc(DiscountRule.created_at)).all()
@@ -25,7 +28,11 @@ class DiscountsService:
         db.flush()
 
         if rule.is_scheduled and rule.schedule_type:
+            # יש תזמון מוגדר — ניצור tasks לפי הלוח
             self._generate_tasks(db, rule)
+        elif rule.is_active:
+            # פעיל בלי תאריך — מתחיל מיד
+            self._create_immediate_task(db, rule, 'apply_discount')
 
         db.commit()
         db.refresh(rule)
@@ -39,9 +46,12 @@ class DiscountsService:
         if not rule:
             raise ValueError("Rule not found")
 
+        was_active = rule.is_active
+
         for key, value in data.items():
             setattr(rule, key, value)
 
+        # מחק tasks ממתינים ישנים
         db.query(DiscountTask).filter(
             DiscountTask.rule_id == rule_id,
             DiscountTask.status == "pending",
@@ -49,6 +59,12 @@ class DiscountsService:
 
         if rule.is_scheduled and rule.schedule_type:
             self._generate_tasks(db, rule)
+        elif rule.is_active:
+            # פעיל בלי תאריך — מתחיל מיד
+            self._create_immediate_task(db, rule, 'apply_discount')
+        elif was_active and not rule.is_active:
+            # כובה — מסיים מיד
+            self._create_immediate_task(db, rule, 'remove_discount')
 
         db.commit()
         db.refresh(rule)
@@ -59,9 +75,18 @@ class DiscountsService:
             DiscountRule.id == rule_id,
             DiscountRule.shop_id == shop_id,
         ).first()
-        if rule:
-            db.delete(rule)
-            db.commit()
+        if not rule:
+            return
+
+        # אם ההנחה פעילה — צור task לסיום המבצע ב-Etsy לפני המחיקה
+        if rule.is_active:
+            self._create_immediate_task(db, rule, 'remove_discount')
+            db.flush()
+
+        # מחיקה רכה — לא מוחקים מה-DB כי ה-task עדיין צריך לגשת לכלל
+        rule.status = 'deleted'
+        rule.is_active = False
+        db.commit()
 
     def toggle_rule(self, db: Session, rule_id: int, shop_id: int) -> DiscountRule:
         rule = db.query(DiscountRule).filter(
@@ -70,8 +95,23 @@ class DiscountsService:
         ).first()
         if not rule:
             raise ValueError("Rule not found")
+
         rule.is_active = not rule.is_active
         rule.status = "active" if rule.is_active else "paused"
+
+        # מחק tasks ממתינים ישנים
+        db.query(DiscountTask).filter(
+            DiscountTask.rule_id == rule_id,
+            DiscountTask.status == "pending",
+        ).delete()
+
+        if rule.is_active:
+            # הופעל — מתחיל מיד
+            self._create_immediate_task(db, rule, 'apply_discount')
+        else:
+            # כובה — מסיים מיד
+            self._create_immediate_task(db, rule, 'remove_discount')
+
         db.commit()
         db.refresh(rule)
         return rule
@@ -85,7 +125,22 @@ class DiscountsService:
             query = query.filter(DiscountTask.status == status)
         return query.order_by(desc(DiscountTask.scheduled_for)).limit(limit).all()
 
+    def _create_immediate_task(self, db: Session, rule: DiscountRule, action: str):
+        """יוצר task שמתבצע מיד (scheduled_for = עכשיו)."""
+        task = DiscountTask(
+            rule_id=rule.id,
+            shop_id=rule.shop_id,
+            action=action,
+            discount_value=rule.discount_value if action == 'apply_discount' else None,
+            scope=rule.scope,
+            listing_ids=rule.listing_ids,
+            scheduled_for=datetime.now(timezone.utc),
+            status='pending',
+        )
+        db.add(task)
+
     def _generate_tasks(self, db: Session, rule: DiscountRule):
+        """יוצר tasks לפי תזמון מוגדר (one_time / rotating)."""
         now = datetime.now(timezone.utc)
         tasks = []
 
@@ -119,7 +174,7 @@ class DiscountsService:
 
             current = start
             while current <= end:
-                dow = current.weekday()  # Monday=0 ... Sunday=6
+                dow = current.weekday()
                 for item in rule.rotation_config:
                     if item.get("day_of_week") == dow and item.get("discount_value"):
                         tasks.append(DiscountTask(

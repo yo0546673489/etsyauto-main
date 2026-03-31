@@ -1,0 +1,65 @@
+Scraping store 1...
+
+=== Scraping ALL conversations from Store 1 ===
+
+Store: חנות 1 (etsy054667@gmail.com)
+Profile: k16kmi55
+
+[1] Connecting to AdsPower profile...
+  CDP: ws://127.0.0.1:52134/devtools/browser/a2c59fb1-dfd8-4426-b374-32547b0d3cdb
+
+[2] Navigating to All messages...
+  URL: https://www.etsy.com/messages/all
+
+[3] Finding conversation list items...
+  Found 9 items:
+    [0] LI.wt-display-flex-xs convo-inbox-v2-tag si | "Inbox" | link=https://www.etsy.com/messages
+    [1] LI.wt-display-flex-xs convo-inbox-v2-tag si | "Starred" | link=https://www.etsy.com/messages/starred
+    [2] LI.wt-display-flex-xs convo-inbox-v2-tag si | "From potential buyers" | link=https://www.etsy.com/messages/from_potential_buyers
+    [3] LI.wt-display-flex-xs convo-inbox-v2-tag si | "From Etsy" | link=https://www.etsy.com/messages/etsy_notifications
+    [4] LI.wt-display-flex-xs convo-inbox-v2-tag si | "Sent" | link=https://www.etsy.com/messages/sent
+    [5] LI.wt-display-flex-xs convo-inbox-v2-tag si | "All" | link=https://www.etsy.com/messages/all
+    [6] LI.wt-display-flex-xs convo-inbox-v2-tag si | "Unread" | link=https://www.etsy.com/messages/unread
+    [7] LI.wt-display-flex-xs convo-inbox-v2-tag si | "Spam" | link=https://www.etsy.com/messages/spam
+    [8] LI.wt-display-flex-xs convo-inbox-v2-tag si | "Recycling bin" | link=https://www.etsy.com/messages/trash
+
+[4] Scraping 9 conversations...
+
+  [1/9] Clicking conversation...
+    URL: https://www.etsy.com/messages/all
+    ⚠ No messages visible — skipping
+
+  [2/9] Clicking conversation...
+    URL: https://www.etsy.com/messages/all
+    ⚠ No messages visible — skipping
+
+  [3/9] Clicking conversation...
+    URL: https://www.etsy.com/messages/all
+    ⚠ No messages visible — skipping
+
+  [4/9] Clicking conversation...
+    URL: https://www.etsy.com/messages/all
+    ⚠ No messages visible — skipping
+
+  [5/9] Clicking conversation...
+    URL: https://www.etsy.com/messages/all
+    ⚠ No messages visible — skipping
+
+  [6/9] Clicking conversation...
+    URL: https://www.etsy.com/messages/all
+    ⚠ No messages visible — skipping
+
+  [7/9] Clicking conversation...
+    URL: https://www.etsy.com/messages/all
+    ⚠ No messages visible — skipping
+
+  [8/9] Clicking conversation...
+    URL: https://www.etsy.com/messages/all
+    ⚠ No messages visible — skipping
+
+  [9/9] Clicking conversation...
+    URL: https://www.etsy.com/messages/all
+    ⚠ No messages visible — skipping
+
+=== Done: 0 saved, 9 failed ===
+Done.

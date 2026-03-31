@@ -23,11 +23,13 @@ export class EmailParser {
 
       const subject = parsed.subject || '';
 
+      const subjectLower = subject.toLowerCase();
       const isMessageNotification =
-        subject.toLowerCase().includes('message') ||
-        subject.toLowerCase().includes('sent you a message') ||
-        subject.toLowerCase().includes('new message') ||
-        subject.toLowerCase().includes('replied');
+        subjectLower.includes('message') ||
+        subjectLower.includes('conversation') ||
+        subjectLower.includes('sent you') ||
+        subjectLower.includes('replied') ||
+        subjectLower.includes('new message');
       if (!isMessageNotification) return null;
 
       const toAddress = this.extractStoreEmail(parsed);
@@ -54,22 +56,28 @@ export class EmailParser {
   }
 
   private extractStoreEmail(parsed: ParsedMail): string {
-    const deliveredTo = parsed.headers.get('delivered-to');
-    if (deliveredTo) {
-      const addr = typeof deliveredTo === 'string' ? deliveredTo : String(deliveredTo);
-      if (addr.includes('@')) return addr.trim().toLowerCase();
-    }
-    const forwardedTo = parsed.headers.get('x-forwarded-to');
-    if (forwardedTo) {
-      const addr = typeof forwardedTo === 'string' ? forwardedTo : String(forwardedTo);
-      if (addr.includes('@')) return addr.trim().toLowerCase();
-    }
+    // Priority: actual To: field (the original store's Gmail)
+    // delivered-to is the forwarding destination (central Gmail) — skip it first
     const to = parsed.to;
     if (to) {
       const addresses = Array.isArray(to) ? to : [to];
       for (const addr of addresses) {
-        if (addr.value?.[0]?.address) return addr.value[0].address.toLowerCase();
+        const email = addr.value?.[0]?.address?.toLowerCase() || '';
+        if (email && email.includes('@')) return email;
       }
+    }
+    // x-forwarded-for: "original@store.com central@gmail.com" — take the first
+    const xfwdFor = parsed.headers.get('x-forwarded-for');
+    if (xfwdFor) {
+      const raw = typeof xfwdFor === 'string' ? xfwdFor : String(xfwdFor);
+      const first = raw.trim().split(/\s+/)[0];
+      if (first && first.includes('@')) return first.toLowerCase();
+    }
+    // Fallback: delivered-to
+    const deliveredTo = parsed.headers.get('delivered-to');
+    if (deliveredTo) {
+      const addr = typeof deliveredTo === 'string' ? deliveredTo : String(deliveredTo);
+      if (addr.includes('@')) return addr.trim().toLowerCase();
     }
     return '';
   }
@@ -96,30 +104,37 @@ export class EmailParser {
     const html = parsed.html || '';
     const text = parsed.text || '';
 
-    // Extract all hrefs from HTML <a> tags first, look for Etsy conversation links
-    const hrefMatches = html.matchAll(/href=["']([^"']+)["']/gi);
-    for (const m of hrefMatches) {
-      const url = m[1];
-      if (/etsy\.com\/[^\s"'<>]*(message|convo|conversation)/i.test(url)) {
-        return url.split(/[<>"'\s]/)[0];
-      }
-    }
+    // Strategy 1: find <a href="..."> whose visible text is "View message"
+    // Etsy wraps all links through ablink.account.etsy.com (SendGrid tracking)
+    // The browser will follow the redirect to the actual Etsy conversation URL
+    const viewMsgMatch = html.match(
+      /href=["'](https?:\/\/[^"']+)["'][^>]*>[\s\S]{0,200}?view\s*message/i
+    );
+    if (viewMsgMatch) return viewMsgMatch[1];
 
+    // Also try reversed order (text before href in some email clients)
+    const viewMsgMatch2 = html.match(
+      /view\s*message[\s\S]{0,400}?href=["'](https?:\/\/[^"']+)["']/i
+    );
+    if (viewMsgMatch2) return viewMsgMatch2[1];
+
+    // Strategy 2: direct Etsy conversation URLs (not through tracker)
     const combined = html + ' ' + text;
     const patterns = [
       /https?:\/\/(?:www\.)?etsy\.com\/your\/conversations\/\d+[^\s"'<>]*/gi,
       /https?:\/\/(?:www\.)?etsy\.com\/conversations\/\d+[^\s"'<>]*/gi,
-      /https?:\/\/(?:www\.)?etsy\.com\/messages[^\s"'<>]*/gi,
-      /https?:\/\/(?:www\.)?etsy\.com\/your\/messages\/\d+[^\s"'<>]*/gi,
+      /https?:\/\/(?:www\.)?etsy\.com\/messages\/\d+[^\s"'<>]*/gi,
       /https?:\/\/(?:www\.)?etsy\.me\/\w+/gi,
-      /https?:\/\/(?:www\.)?etsy\.com\/[^\s"'<>]*(?:message|convo|conversation)[^\s"'<>]*/gi,
     ];
     for (const pattern of patterns) {
       const match = combined.match(pattern);
-      if (match) {
-        return match[0].replace(/[<>"'\s].*$/, '');
-      }
+      if (match) return match[0].replace(/[<>"'\s].*$/, '');
     }
+
+    // Strategy 3: first ablink that resolves to a conversation (follow redirect client-side)
+    const ablinkMatch = html.match(/href=["'](https?:\/\/ablink\.account\.etsy\.com\/[^"']+)["']/i);
+    if (ablinkMatch) return ablinkMatch[1];
+
     return '';
   }
 }

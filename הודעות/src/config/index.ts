@@ -5,6 +5,9 @@ export const config = {
   db: {
     url: process.env.DATABASE_URL || 'postgresql://etsy_user:etsy_pass@localhost:5432/etsy_messages',
   },
+  platformDb: {
+    url: process.env.PLATFORM_DATABASE_URL || '',
+  },
   redis: {
     url: process.env.REDIS_URL || 'redis://localhost:6379',
   },
@@ -27,5 +30,9 @@ export const config = {
   },
   ai: {
     anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
+  },
+  profitly: {
+    apiUrl: process.env.PROFITLY_API_URL || 'http://localhost:8000',
+    apiKey: process.env.PROFITLY_API_KEY || '',
   },
 };

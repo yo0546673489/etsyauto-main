@@ -10,24 +10,25 @@
     "inspect": "tsx scripts/inspect-selectors.ts"
   },
   "dependencies": {
-    "dotenv": "^16.4.0",
-    "pg": "^8.12.0",
-    "bullmq": "^5.0.0",
-    "ioredis": "^5.3.0",
-    "fastify": "^4.25.0",
     "@fastify/cors": "^9.0.0",
-    "socket.io": "^4.7.0",
-    "playwright": "^1.41.0",
+    "axios": "^1.6.0",
+    "bullmq": "^5.0.0",
+    "dotenv": "^16.4.0",
+    "fastify": "^4.25.0",
     "ghost-cursor-playwright": "^1.0.0",
     "imapflow": "^1.0.0",
+    "ioredis": "^5.3.0",
     "mailparser": "^3.6.0",
-    "axios": "^1.6.0"
+    "pg": "^8.12.0",
+    "playwright": "^1.41.0",
+    "socket.io": "^4.7.0"
   },
   "devDependencies": {
-    "typescript": "^5.3.0",
-    "tsx": "^4.7.0",
+    "@types/mailparser": "^3.4.0",
     "@types/node": "^20.0.0",
     "@types/pg": "^8.10.0",
-    "@types/mailparser": "^3.4.0"
+    "ssh2": "^1.17.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
   }
 }
