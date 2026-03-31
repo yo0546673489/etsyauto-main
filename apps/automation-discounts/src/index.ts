@@ -62,7 +62,7 @@ async function main() {
   // API Server
   const fastify = Fastify({ logger: false });
   await fastify.register(cors, { origin: true });
-  await discountRoutes(fastify, pool, discountQueue, resolver);
+  await discountRoutes(fastify, pool, discountQueue, resolver, platformPool);
 
   await fastify.listen({ port: config.api.port, host: config.api.host });
   logger.info(`Discount API running on port ${config.api.port}`);

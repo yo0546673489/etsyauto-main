@@ -11,6 +11,7 @@
 import { Pool } from 'pg';
 import { Queue } from 'bullmq';
 import { logger } from '../utils/logger';
+import { getNextDiscountPercent, generateSaleName } from '../api/discounts';
 
 interface DiscountTask {
   id: number;
@@ -37,6 +38,14 @@ interface DiscountRule {
   etsy_sale_name: string | null;
   start_date: Date | null;
   end_date: Date | null;
+  // auto-rotation fields
+  auto_rotate: boolean;
+  auto_min_percent: number;
+  auto_max_percent: number;
+  auto_interval_days: number;
+  last_discount_percent: number | null;
+  next_rotation_at: Date | null;
+  is_active: boolean;
 }
 
 interface Shop {
@@ -50,6 +59,7 @@ export class DiscountTaskExecutor {
   private platformPool: Pool;     // etsy_platform DB (Python)
   private queue: Queue;
   private intervalId?: NodeJS.Timeout;
+  private rotationIntervalId?: NodeJS.Timeout;
 
   constructor(platformDatabaseUrl: string, queue: Queue) {
     this.platformPool = new Pool({ connectionString: platformDatabaseUrl });
@@ -62,11 +72,100 @@ export class DiscountTaskExecutor {
     this.intervalId = setInterval(() => {
       this.checkAndEnqueue().catch(e => logger.error('Executor check failed', e));
     }, intervalMs);
+
+    // בדיקת auto-rotation כל שעה
+    this.checkAutoRotations().catch(e => logger.error('Auto-rotation check failed', e));
+    this.rotationIntervalId = setInterval(() => {
+      this.checkAutoRotations().catch(e => logger.error('Auto-rotation check failed', e));
+    }, 60 * 60 * 1000);
+    logger.info('Auto-rotation checker started (interval: 1 hour)');
   }
 
   stop(): void {
     if (this.intervalId) clearInterval(this.intervalId);
+    if (this.rotationIntervalId) clearInterval(this.rotationIntervalId);
     this.platformPool.end().catch(() => {});
+  }
+
+  private async checkAutoRotations(): Promise<void> {
+    const rulesResult = await this.platformPool.query<DiscountRule>(`
+      SELECT dr.*, s.adspower_profile_id
+      FROM discount_rules dr
+      JOIN shops s ON s.id = dr.shop_id
+      WHERE dr.auto_rotate = TRUE
+        AND dr.is_active = TRUE
+        AND (dr.next_rotation_at IS NULL OR dr.next_rotation_at <= NOW())
+    `);
+
+    if (rulesResult.rows.length === 0) {
+      logger.debug('No auto-rotation rules due');
+      return;
+    }
+
+    logger.info(`Found ${rulesResult.rows.length} auto-rotation rules due`);
+
+    for (const rule of rulesResult.rows) {
+      try {
+        await this.triggerAutoRotation(rule);
+      } catch (e: any) {
+        logger.error(`Auto-rotation failed for rule ${rule.id}: ${e.message}`);
+      }
+    }
+  }
+
+  private async triggerAutoRotation(rule: DiscountRule & { adspower_profile_id?: string }): Promise<void> {
+    const newPercent = getNextDiscountPercent(
+      rule.auto_min_percent ?? 20,
+      rule.auto_max_percent ?? 30,
+      rule.last_discount_percent ?? null
+    );
+    const saleName = generateSaleName();
+    const startDate = new Date();
+    const endDate = new Date(startDate.getTime() + (rule.auto_interval_days ?? 2) * 24 * 60 * 60 * 1000);
+
+    // עדכון rule
+    await this.platformPool.query(
+      `UPDATE discount_rules SET last_discount_percent = $1, next_rotation_at = $2 WHERE id = $3`,
+      [newPercent, endDate.toISOString(), rule.id]
+    );
+
+    // צור discount_task
+    const taskResult = await this.platformPool.query(
+      `INSERT INTO discount_tasks
+        (rule_id, shop_id, action, discount_value, scope, listing_ids, scheduled_for, status, started_at)
+       VALUES ($1, $2, 'apply_discount', $3, $4, $5, $6, 'pending', $7)
+       RETURNING id`,
+      [
+        rule.id, rule.shop_id, newPercent,
+        rule.scope || 'entire_shop', rule.listing_ids || [],
+        startDate.toISOString(), startDate.toISOString(),
+      ]
+    );
+    const platformTaskId = taskResult.rows[0].id;
+
+    const adsprofileId = (rule as any).adspower_profile_id;
+    if (adsprofileId) {
+      await this.queue.add('execute', {
+        taskId: platformTaskId,
+        storeId: rule.shop_id,
+        serialNumber: adsprofileId,
+        taskType: 'create_sale',
+        platformTaskId,
+        saleConfig: {
+          saleName,
+          discountPercent: newPercent,
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: endDate.toISOString().split('T')[0],
+          targetCountry: rule.target_country || 'Everywhere',
+          termsText: rule.terms_text || undefined,
+          targetScope: (rule.scope === 'specific_listings' ? 'specific_listings' : 'whole_shop') as 'whole_shop' | 'specific_listings',
+          listingIds: rule.listing_ids?.map(String) || undefined,
+        },
+      });
+      logger.info(`Auto-rotation triggered for rule ${rule.id}: ${newPercent}% sale "${saleName}", next at ${endDate.toISOString()}`);
+    } else {
+      logger.warn(`Rule ${rule.id} has no adspower_profile_id, skipping enqueue`);
+    }
   }
 
   private async checkAndEnqueue(): Promise<void> {

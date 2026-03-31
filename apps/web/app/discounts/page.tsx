@@ -4,10 +4,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useShop } from '@/lib/shop-context';
 import { useToast } from '@/lib/toast-context';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { discountsApi, type DiscountRule, type DiscountTask, type RotationItem } from '@/lib/api';
+import { discountsApi, type DiscountRule, type DiscountTask } from '@/lib/api';
 import {
   Tag, Plus, Pencil, Trash2, ToggleLeft, ToggleRight,
-  Clock, CheckCircle2, XCircle, Loader2, RefreshCw,
+  Clock, Loader2, RefreshCw, Zap,
 } from 'lucide-react';
 
 function cn(...cls: (string | boolean | undefined | null)[]) {
@@ -30,8 +30,6 @@ const taskStatusIcon: Record<string, string> = {
   failed:      '❌',
 };
 
-const DAY_NAMES = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
-
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }: { status: string }) {
@@ -46,19 +44,22 @@ function StatusBadge({ status }: { status: string }) {
 
 // ─── Rule Card ────────────────────────────────────────────────────────────────
 
-function RuleCard({ rule, onToggle, onEdit, onDelete }: {
+function RuleCard({ rule, onToggle, onEdit, onDelete, onTriggerRotation }: {
   rule: DiscountRule;
   onToggle: () => void;
   onEdit: () => void;
   onDelete: () => void;
+  onTriggerRotation?: () => void;
 }) {
   const scopeLabel = rule.scope === 'entire_shop' ? 'כל החנות'
     : rule.scope === 'specific_listings' ? `${rule.listing_ids?.length || 0} מוצרים נבחרים`
     : 'קטגוריה';
 
-  const valueLabel = rule.discount_type === 'percentage'
-    ? `${rule.discount_value}% הנחה`
-    : `$${rule.discount_value} הנחה`;
+  const valueLabel = rule.auto_rotate
+    ? `${rule.auto_min_percent ?? 20}–${rule.auto_max_percent ?? 30}% הנחה (אוטומטי)`
+    : rule.discount_type === 'percentage'
+      ? `${rule.discount_value}% הנחה`
+      : `$${rule.discount_value} הנחה`;
 
   return (
     <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
@@ -67,12 +68,28 @@ function RuleCard({ rule, onToggle, onEdit, onDelete }: {
           <div className="flex items-center gap-3 mb-2 flex-wrap">
             <h3 className="font-semibold text-gray-800 text-base">{rule.name}</h3>
             <StatusBadge status={rule.status} />
+            {rule.auto_rotate ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                <Zap className="w-3 h-3" />
+                אוטומטי{rule.last_discount_percent ? ` — ${rule.last_discount_percent}%` : ''}
+                {rule.next_rotation_at ? ` (עד ${new Date(rule.next_rotation_at).toLocaleDateString('he-IL')})` : ''}
+              </span>
+            ) : (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                ידני
+              </span>
+            )}
           </div>
           <p className="text-sm text-gray-600 mb-1">{valueLabel} • {scopeLabel}</p>
-          {rule.is_scheduled && rule.start_date && (
+          {!rule.auto_rotate && rule.is_scheduled && rule.start_date && (
             <p className="text-xs text-gray-400">
               תזמון: {new Date(rule.start_date).toLocaleDateString('he-IL')}
               {rule.end_date ? ` – ${new Date(rule.end_date).toLocaleDateString('he-IL')}` : ''}
+            </p>
+          )}
+          {rule.auto_rotate && rule.auto_interval_days && (
+            <p className="text-xs text-gray-400">
+              החלפה כל {rule.auto_interval_days} ימים
             </p>
           )}
           {rule.etsy_sale_name && (
@@ -80,6 +97,15 @@ function RuleCard({ rule, onToggle, onEdit, onDelete }: {
           )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          {rule.auto_rotate && onTriggerRotation && (
+            <button
+              onClick={onTriggerRotation}
+              className="p-2 text-purple-400 hover:text-purple-600 transition-colors rounded-lg hover:bg-purple-50"
+              title="הפעל סבב הנחה עכשיו"
+            >
+              <Zap className="w-4 h-4" />
+            </button>
+          )}
           <button
             onClick={onToggle}
             className={cn('transition-colors', rule.is_active ? 'text-[#006d43]' : 'text-gray-300')}
@@ -104,8 +130,6 @@ function RuleCard({ rule, onToggle, onEdit, onDelete }: {
 
 // ─── Modal form ───────────────────────────────────────────────────────────────
 
-const DEFAULT_ROTATION: RotationItem[] = [0,1,2,3,4,5,6].map(d => ({ day_of_week: d, discount_value: 0 }));
-
 function DiscountModal({ initial, onClose, onSave }: {
   initial?: DiscountRule;
   onClose: () => void;
@@ -113,31 +137,38 @@ function DiscountModal({ initial, onClose, onSave }: {
 }) {
   const [saving, setSaving] = useState(false);
   const [name, setName] = useState(initial?.name || '');
+  // auto/manual toggle
+  const [autoRotate, setAutoRotate] = useState(initial?.auto_rotate || false);
+  const [autoMinPercent, setAutoMinPercent] = useState(initial?.auto_min_percent?.toString() || '20');
+  const [autoMaxPercent, setAutoMaxPercent] = useState(initial?.auto_max_percent?.toString() || '30');
+  const [autoIntervalDays, setAutoIntervalDays] = useState(initial?.auto_interval_days?.toString() || '2');
+  // manual fields
   const [discountType, setDiscountType] = useState<'percentage' | 'fixed_amount'>(initial?.discount_type || 'percentage');
   const [discountValue, setDiscountValue] = useState(initial?.discount_value?.toString() || '');
   const [scope, setScope] = useState<'entire_shop' | 'specific_listings'>(
     (initial?.scope as any) || 'entire_shop'
   );
-  const [isScheduled, setIsScheduled] = useState(initial?.is_scheduled || false);
-  const [scheduleType, setScheduleType] = useState<'one_time' | 'rotating'>(
-    (initial?.schedule_type as any) || 'one_time'
-  );
   const [startDate, setStartDate] = useState(initial?.start_date ? initial.start_date.slice(0,10) : '');
   const [endDate, setEndDate] = useState(initial?.end_date ? initial.end_date.slice(0,10) : '');
-  const [rotation, setRotation] = useState<RotationItem[]>(initial?.rotation_config || DEFAULT_ROTATION);
   const [targetCountry, setTargetCountry] = useState(initial?.target_country || 'everywhere');
   const [termsText, setTermsText] = useState(initial?.terms_text || '');
-  const [etsySaleName, setEtsySaleName] = useState(initial?.etsy_sale_name || '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validate = () => {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = 'שם הכלל נדרש';
-    if (!discountValue || isNaN(Number(discountValue)) || Number(discountValue) <= 0) e.discountValue = 'ערך הנחה חייב להיות מספר חיובי';
-    if (discountType === 'percentage' && Number(discountValue) > 100) e.discountValue = 'אחוז לא יכול לעלות על 100';
-    if (etsySaleName && !/^[A-Za-z0-9]+$/.test(etsySaleName)) e.etsySaleName = 'אותיות ומספרים בלבד';
-    if (isScheduled && scheduleType === 'one_time') {
+    if (autoRotate) {
+      const min = Number(autoMinPercent), max = Number(autoMaxPercent), interval = Number(autoIntervalDays);
+      if (!autoMinPercent || isNaN(min) || min < 5) e.autoMin = 'מינימום 5%';
+      if (!autoMaxPercent || isNaN(max) || max > 75) e.autoMax = 'מקסימום 75%';
+      if (min >= max) e.autoMax = 'מקסימום חייב להיות גדול ממינימום';
+      if (!autoIntervalDays || isNaN(interval) || interval < 1) e.autoInterval = 'לפחות יום אחד';
+      if (interval > 30) e.autoInterval = 'מקסימום 30 ימים';
+    } else {
+      if (!discountValue || isNaN(Number(discountValue)) || Number(discountValue) <= 0) e.discountValue = 'ערך הנחה חייב להיות מספר חיובי';
+      if (discountType === 'percentage' && Number(discountValue) > 75) e.discountValue = 'מקסימום 75% ב-Etsy';
       if (!startDate) e.startDate = 'תאריך התחלה נדרש';
+      if (!endDate) e.endDate = 'תאריך סיום נדרש';
       if (startDate && endDate) {
         const diff = (new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000;
         if (diff > 30) e.endDate = 'מקסימום 30 יום (מגבלת Etsy)';
@@ -151,20 +182,20 @@ function DiscountModal({ initial, onClose, onSave }: {
   const buildPayload = (activate: boolean): Partial<DiscountRule> => ({
     name: name.trim(),
     discount_type: discountType,
-    discount_value: Number(discountValue),
+    discount_value: autoRotate ? Number(autoMinPercent) : Number(discountValue),
     scope,
-    is_scheduled: isScheduled,
-    schedule_type: isScheduled ? scheduleType : undefined,
-    start_date: isScheduled && startDate ? startDate : undefined,
-    end_date: isScheduled && endDate ? endDate : undefined,
-    rotation_config: isScheduled && scheduleType === 'rotating'
-      ? rotation.filter(r => r.discount_value > 0)
-      : undefined,
+    is_scheduled: !autoRotate,
+    start_date: !autoRotate ? startDate : undefined,
+    end_date: !autoRotate ? endDate : undefined,
     target_country: targetCountry,
     terms_text: termsText || undefined,
-    etsy_sale_name: etsySaleName || undefined,
     status: activate ? 'active' : 'draft',
     is_active: activate,
+    // auto-rotation fields
+    auto_rotate: autoRotate,
+    auto_min_percent: autoRotate ? Number(autoMinPercent) : undefined,
+    auto_max_percent: autoRotate ? Number(autoMaxPercent) : undefined,
+    auto_interval_days: autoRotate ? Number(autoIntervalDays) : undefined,
   });
 
   const handleSubmit = async (activate: boolean) => {
@@ -177,12 +208,6 @@ function DiscountModal({ initial, onClose, onSave }: {
     }
   };
 
-  const previewPrice = discountType === 'percentage' && discountValue
-    ? `מחיר מקורי: $100 → אחרי הנחה: $${(100 - Number(discountValue)).toFixed(0)}`
-    : discountType === 'fixed_amount' && discountValue
-      ? `מחיר מקורי: $100 → אחרי הנחה: $${(100 - Number(discountValue)).toFixed(0)}`
-      : null;
-
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
@@ -192,6 +217,38 @@ function DiscountModal({ initial, onClose, onSave }: {
         </div>
 
         <div className="p-6 space-y-6">
+          {/* ─── Toggle אוטומטי / ידני ─── */}
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+            <p className="text-sm font-semibold text-gray-700 mb-3">מצב ניהול הנחה</p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setAutoRotate(false)}
+                className={cn(
+                  'flex-1 py-2.5 px-4 rounded-lg text-sm font-medium border-2 transition-colors',
+                  !autoRotate
+                    ? 'border-[#006d43] bg-[#006d43] text-white'
+                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                )}
+              >
+                ידני
+              </button>
+              <button
+                type="button"
+                onClick={() => setAutoRotate(true)}
+                className={cn(
+                  'flex-1 py-2.5 px-4 rounded-lg text-sm font-medium border-2 transition-colors flex items-center justify-center gap-2',
+                  autoRotate
+                    ? 'border-purple-600 bg-purple-600 text-white'
+                    : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                )}
+              >
+                <Zap className="w-4 h-4" />
+                אוטומטי
+              </button>
+            </div>
+          </div>
+
           {/* שם הכלל */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">שם הכלל (פנימי)</label>
@@ -201,44 +258,91 @@ function DiscountModal({ initial, onClose, onSave }: {
             {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
           </div>
 
-          {/* שם מכירה ב-Etsy */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">שם המכירה ב-Etsy</label>
-            <input value={etsySaleName} onChange={e => setEtsySaleName(e.target.value.toUpperCase())}
-              className={cn('w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#006d43] font-mono', errors.etsySaleName ? 'border-red-300' : 'border-gray-200')}
-              placeholder="SPRINGSALE2026" />
-            {errors.etsySaleName
-              ? <p className="text-xs text-red-500 mt-1">{errors.etsySaleName}</p>
-              : <p className="text-xs text-gray-400 mt-1">אותיות ומספרים בלבד, ייחודי ב-Etsy</p>
-            }
-          </div>
-
-          {/* סוג הנחה */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">סוג הנחה</label>
-            <div className="flex gap-4">
-              {(['percentage', 'fixed_amount'] as const).map(t => (
-                <label key={t} className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" checked={discountType === t} onChange={() => setDiscountType(t)} className="accent-[#006d43]" />
-                  <span className="text-sm">{t === 'percentage' ? 'אחוזים (%)' : 'סכום קבוע ($)'}</span>
-                </label>
-              ))}
+          {/* ─── מצב אוטומטי ─── */}
+          {autoRotate && (
+            <div className="space-y-4 bg-purple-50 border border-purple-200 rounded-xl p-4">
+              <p className="text-sm font-medium text-purple-700 flex items-center gap-2">
+                <Zap className="w-4 h-4" /> הגדרות מצב אוטומטי
+              </p>
+              <div className="flex gap-4 flex-wrap items-end">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">הנחה מינימום (%)</label>
+                  <input type="number" min="5" max="74" value={autoMinPercent}
+                    onChange={e => setAutoMinPercent(e.target.value)}
+                    className={cn('w-24 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-400', errors.autoMin ? 'border-red-300' : 'border-gray-200')} />
+                  {errors.autoMin && <p className="text-xs text-red-500 mt-1">{errors.autoMin}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">הנחה מקסימום (%)</label>
+                  <input type="number" min="6" max="75" value={autoMaxPercent}
+                    onChange={e => setAutoMaxPercent(e.target.value)}
+                    className={cn('w-24 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-400', errors.autoMax ? 'border-red-300' : 'border-gray-200')} />
+                  {errors.autoMax && <p className="text-xs text-red-500 mt-1">{errors.autoMax}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">החלפה כל (ימים)</label>
+                  <input type="number" min="1" max="30" value={autoIntervalDays}
+                    onChange={e => setAutoIntervalDays(e.target.value)}
+                    className={cn('w-24 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-400', errors.autoInterval ? 'border-red-300' : 'border-gray-200')} />
+                  {errors.autoInterval && <p className="text-xs text-red-500 mt-1">{errors.autoInterval}</p>}
+                </div>
+              </div>
+              <p className="text-xs text-purple-600">
+                שם המבצע ב-Etsy נוצר אוטומטית • תאריכים מחושבים אוטומטית
+              </p>
             </div>
-          </div>
+          )}
 
-          {/* ערך הנחה */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              ערך ההנחה {discountType === 'percentage' ? '(%)' : '($)'}
-            </label>
-            <input type="number" min="0" max={discountType === 'percentage' ? 100 : undefined}
-              value={discountValue} onChange={e => setDiscountValue(e.target.value)}
-              className={cn('w-32 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#006d43]', errors.discountValue ? 'border-red-300' : 'border-gray-200')} />
-            {errors.discountValue && <p className="text-xs text-red-500 mt-1">{errors.discountValue}</p>}
-            {previewPrice && (
-              <p className="text-xs text-[#006d43] mt-2 font-medium">{previewPrice}</p>
-            )}
-          </div>
+          {/* ─── מצב ידני ─── */}
+          {!autoRotate && (
+            <>
+              {/* סוג הנחה */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">סוג הנחה</label>
+                <div className="flex gap-4">
+                  {(['percentage', 'fixed_amount'] as const).map(t => (
+                    <label key={t} className="flex items-center gap-2 cursor-pointer">
+                      <input type="radio" checked={discountType === t} onChange={() => setDiscountType(t)} className="accent-[#006d43]" />
+                      <span className="text-sm">{t === 'percentage' ? 'אחוזים (%)' : 'סכום קבוע ($)'}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* ערך הנחה */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  ערך ההנחה {discountType === 'percentage' ? '(%)' : '($)'}
+                </label>
+                <input type="number" min="0" max={discountType === 'percentage' ? 75 : undefined}
+                  value={discountValue} onChange={e => setDiscountValue(e.target.value)}
+                  className={cn('w-32 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#006d43]', errors.discountValue ? 'border-red-300' : 'border-gray-200')} />
+                {errors.discountValue && <p className="text-xs text-red-500 mt-1">{errors.discountValue}</p>}
+                {discountType === 'percentage' && discountValue && (
+                  <p className="text-xs text-[#006d43] mt-2 font-medium">
+                    מחיר מקורי: $100 → אחרי הנחה: ${(100 - Number(discountValue)).toFixed(0)}
+                  </p>
+                )}
+              </div>
+
+              {/* תאריכים — חובה תמיד */}
+              <div className="flex gap-4 flex-wrap">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">תאריך התחלה <span className="text-red-500">*</span></label>
+                  <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                    className={cn('px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#006d43]', errors.startDate ? 'border-red-300' : 'border-gray-200')} />
+                  {errors.startDate && <p className="text-xs text-red-500 mt-1">{errors.startDate}</p>}
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">תאריך סיום <span className="text-red-500">*</span></label>
+                  <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                    className={cn('px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#006d43]', errors.endDate ? 'border-red-300' : 'border-gray-200')} />
+                  {errors.endDate && <p className="text-xs text-red-500 mt-1">{errors.endDate}</p>}
+                </div>
+              </div>
+              <p className="text-xs text-amber-600 font-medium">⚠️ Etsy מגביל מכירה ל-30 יום מקסימום</p>
+            </>
+          )}
 
           {/* איפה ההנחה תקפה */}
           <div>
@@ -275,104 +379,6 @@ function DiscountModal({ initial, onClose, onSave }: {
             <p className="text-xs text-gray-400 text-left">{termsText.length}/500</p>
           </div>
 
-          {/* תזמון */}
-          <div className="border border-gray-100 rounded-xl p-4 bg-gray-50">
-            <div className="flex items-center gap-3 mb-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={isScheduled} onChange={e => setIsScheduled(e.target.checked)} className="accent-[#006d43]" />
-                <span className="text-sm font-medium text-gray-700">תזמן את ההנחה</span>
-              </label>
-            </div>
-
-            {isScheduled && (
-              <div className="space-y-4">
-                <div className="flex gap-4">
-                  {(['one_time', 'rotating'] as const).map(t => (
-                    <label key={t} className="flex items-center gap-2 cursor-pointer">
-                      <input type="radio" checked={scheduleType === t} onChange={() => setScheduleType(t)} className="accent-[#006d43]" />
-                      <span className="text-sm">{t === 'one_time' ? 'חד פעמי' : 'רוטציה לפי ימים'}</span>
-                    </label>
-                  ))}
-                </div>
-
-                {scheduleType === 'one_time' && (
-                  <div className="flex gap-4 flex-wrap">
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">תאריך התחלה</label>
-                      <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                        className={cn('px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#006d43]', errors.startDate ? 'border-red-300' : 'border-gray-200')} />
-                      {errors.startDate && <p className="text-xs text-red-500 mt-1">{errors.startDate}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-500 mb-1">תאריך סיום</label>
-                      <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                        className={cn('px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#006d43]', errors.endDate ? 'border-red-300' : 'border-gray-200')} />
-                      {errors.endDate && <p className="text-xs text-red-500 mt-1">{errors.endDate}</p>}
-                    </div>
-                  </div>
-                )}
-
-                {scheduleType === 'one_time' && (
-                  <p className="text-xs text-amber-600 font-medium">⚠️ Etsy מגביל מכירה ל-30 יום מקסימום</p>
-                )}
-
-                {scheduleType === 'rotating' && (
-                  <div className="space-y-3">
-                    <div className="overflow-hidden rounded-lg border border-gray-200">
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="text-right px-3 py-2 font-medium text-gray-600">יום</th>
-                            <th className="text-right px-3 py-2 font-medium text-gray-600">הנחה (%)</th>
-                            <th className="text-right px-3 py-2 font-medium text-gray-600">פעיל</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {rotation.map((item, i) => (
-                            <tr key={i} className="border-t border-gray-100">
-                              <td className="px-3 py-2 text-gray-700">{DAY_NAMES[item.day_of_week]}</td>
-                              <td className="px-3 py-2">
-                                <input type="number" min="0" max="100" value={item.discount_value || ''}
-                                  onChange={e => {
-                                    const updated = [...rotation];
-                                    updated[i] = { ...item, discount_value: Number(e.target.value) };
-                                    setRotation(updated);
-                                  }}
-                                  disabled={item.discount_value === 0 && rotation[i].discount_value === 0}
-                                  className="w-20 px-2 py-1 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-[#006d43]" />
-                              </td>
-                              <td className="px-3 py-2">
-                                <input type="checkbox"
-                                  checked={item.discount_value > 0}
-                                  onChange={e => {
-                                    const updated = [...rotation];
-                                    updated[i] = { ...item, discount_value: e.target.checked ? 10 : 0 };
-                                    setRotation(updated);
-                                  }}
-                                  className="accent-[#006d43]" />
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="flex gap-4 flex-wrap">
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">תאריך התחלה (אופציונלי)</label>
-                        <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
-                          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#006d43]" />
-                      </div>
-                      <div>
-                        <label className="block text-xs text-gray-500 mb-1">תאריך סיום (אופציונלי)</label>
-                        <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
-                          className="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#006d43]" />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Footer */}
@@ -482,6 +488,19 @@ export default function DiscountsPage() {
       showToast('הנחה נמחקה', 'success');
     } catch {
       showToast('שגיאה במחיקה', 'error');
+    }
+  };
+
+  const handleTriggerRotation = async (rule: DiscountRule) => {
+    try {
+      const result = await discountsApi.triggerRotation(rule.id);
+      setRules(prev => prev.map(r => r.id === rule.id
+        ? { ...r, last_discount_percent: result.new_percent, next_rotation_at: result.next_rotation_at }
+        : r
+      ));
+      showToast(`סבב הנחה הופעל — ${result.new_percent}% (${result.sale_name})`, 'success');
+    } catch {
+      showToast('שגיאה בהפעלת הסבב', 'error');
     }
   };
 
@@ -629,6 +648,7 @@ export default function DiscountsPage() {
                   onToggle={() => handleToggle(rule)}
                   onEdit={() => { setEditingRule(rule); setShowModal(true); }}
                   onDelete={() => handleDelete(rule)}
+                  onTriggerRotation={rule.auto_rotate ? () => handleTriggerRotation(rule) : undefined}
                 />
               ))
             )}

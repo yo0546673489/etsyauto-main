@@ -1674,6 +1674,13 @@ export interface DiscountRule {
   is_active: boolean;
   created_at: string;
   updated_at?: string;
+  // auto-rotation fields
+  auto_rotate?: boolean;
+  auto_min_percent?: number;
+  auto_max_percent?: number;
+  auto_interval_days?: number;
+  last_discount_percent?: number;
+  next_rotation_at?: string;
 }
 
 export interface DiscountTask {
@@ -1715,6 +1722,12 @@ export const discountsApi = {
 
   toggleRule: (shopId: number, ruleId: number) =>
     apiRequest<DiscountRule>(`/api/discounts/rules/${ruleId}/toggle?shop_id=${shopId}`, { method: 'POST' }),
+
+  triggerRotation: (ruleId: number) =>
+    apiRequest<{ new_percent: number; sale_name: string; next_rotation_at: string }>(
+      `/api/discounts/rules/${ruleId}/trigger-rotation`,
+      { method: 'POST' }
+    ),
 
   getTasks: (shopId: number, ruleId?: number, status?: string, limit = 50) => {
     const params = new URLSearchParams({ shop_id: shopId.toString(), limit: limit.toString() });

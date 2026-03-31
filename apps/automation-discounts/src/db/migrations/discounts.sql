@@ -41,3 +41,14 @@ CREATE TABLE IF NOT EXISTS discount_tasks (
 
 CREATE INDEX IF NOT EXISTS idx_discount_tasks_status ON discount_tasks(status);
 CREATE INDEX IF NOT EXISTS idx_discount_tasks_store_id ON discount_tasks(store_id);
+
+-- ================================================================
+-- Auto-rotation columns — הוסף לטבלת discount_rules (etsy_platform DB)
+-- הרץ ידנית מול etsy_platform DB
+-- ================================================================
+ALTER TABLE discount_rules ADD COLUMN IF NOT EXISTS auto_rotate BOOLEAN DEFAULT FALSE;
+ALTER TABLE discount_rules ADD COLUMN IF NOT EXISTS auto_min_percent INTEGER DEFAULT 20;
+ALTER TABLE discount_rules ADD COLUMN IF NOT EXISTS auto_max_percent INTEGER DEFAULT 30;
+ALTER TABLE discount_rules ADD COLUMN IF NOT EXISTS auto_interval_days INTEGER DEFAULT 2;
+ALTER TABLE discount_rules ADD COLUMN IF NOT EXISTS last_discount_percent INTEGER;
+ALTER TABLE discount_rules ADD COLUMN IF NOT EXISTS next_rotation_at TIMESTAMP;
