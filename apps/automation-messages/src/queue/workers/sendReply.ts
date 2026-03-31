@@ -35,9 +35,17 @@ export function createReplyWorker(pool: Pool, jobQueue: JobQueue): Worker {
       const browserInfo = await adspower.openProfile(profileId);
       if (!browserInfo) throw new Error(`Could not open profile ${profileId}`);
 
-      browser = await chromium.connectOverCDP(browserInfo.ws.puppeteer);
+      // Wait for AdsPower browser to be fully ready before connecting
+      await new Promise(r => setTimeout(r, 5000));
+      browser = await chromium.connectOverCDP(browserInfo.ws.puppeteer, { timeout: 60000 });
       const context = browser.contexts()[0];
-      const page = context.pages()[0] || await context.newPage();
+
+      // Close all extra tabs — keep only one to avoid slowdowns
+      const allPages = context.pages();
+      for (let i = 1; i < allPages.length; i++) {
+        await allPages[i].close().catch(() => {});
+      }
+      const page = allPages[0] || await context.newPage();
 
       const sender = new EtsySender(page);
       const success = await sender.sendReply(conversationUrl, messageText);
