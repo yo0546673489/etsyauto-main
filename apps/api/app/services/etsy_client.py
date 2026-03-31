@@ -180,10 +180,11 @@ class EtsyClient:
             # Handle 401 - token might have expired between check and request
             if response.status_code == 401 and retry_on_401:
                 logger.warning(f"Got 401 from Etsy API, forcing token refresh for shop {shop_id}")
-                
-                # Force token refresh
+
+                # Force token refresh - use get_token first to benefit from lock/cache
+                # (another worker may have already refreshed, so check DB first)
                 try:
-                    new_token = await self.token_manager.refresh_token(tenant_id, shop_id, 'etsy')
+                    new_token = await self.token_manager.get_token(tenant_id, shop_id, 'etsy', auto_refresh=True)
                     
                     # Retry request with new token
                     headers["Authorization"] = f"Bearer {new_token}"
