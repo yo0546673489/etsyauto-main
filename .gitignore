@@ -103,3 +103,6 @@ PRN
 .cache/
 tmp/
 temp/
+.claude/
+_backup_temp/
+אפליקציה לנייד/
