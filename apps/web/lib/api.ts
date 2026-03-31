@@ -866,6 +866,7 @@ export interface DashboardStats {
   active_listings: number;
   new_orders_unread: number;
   available_for_payout?: number;
+  available_for_deposit?: number | null;
   payout_currency?: string;
   payout_label?: string;
   date_filtered?: boolean;

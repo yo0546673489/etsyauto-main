@@ -15,9 +15,9 @@ import { PAYMENT_STATUS_STYLES, normalizePaymentStatus } from '@/lib/order-statu
 import { cn } from '@/lib/utils';
 import {
   Eye,
-  Users,
   ShoppingBag,
   Wallet,
+  CreditCard,
   Truck,
   Plus,
   Mail,
@@ -138,11 +138,11 @@ function OwnerDashboardContent() {
     );
   }
 
-  const payoutAmount   = stats.available_for_payout || 0;
-  const payoutLabel    = stats.payout_label || 'יתרה נוכחית';
-  const totalOrders    = stats.total_orders || 0;
-  const totalCustomers = stats.total_customers || 0;
-  const totalViews     = stats.total_views || 0;
+  const payoutAmount      = stats.available_for_payout || 0;
+  const depositAmount     = stats.available_for_deposit;   // null = unknown
+  const payoutLabel       = stats.payout_label || 'יתרה נוכחית';
+  const totalOrders       = stats.total_orders || 0;
+  const totalViews        = stats.total_views || 0;
   const todayVisits    = stats.today_visits || 0;
   // today_visits = from Etsy Stats API (often unavailable) → show totalViews only for multi-day ranges
   const isToday        = dateRange.key === 'today' || dateRange.key === 'yesterday';
@@ -187,7 +187,7 @@ function OwnerDashboardContent() {
 
       {/* ── 4 Stat Cards ──
           RTL: first in HTML = visual RIGHTMOST
-          Mockup order (right→left): תשלום ממתין | מספר הזמנות | לקוחות חדשים | צפיות בחנות
+          סדר (ימין→שמאל): יתרה נוכחית | כסף משוחרר לבנק | מספר הזמנות | צפיות בחנות
       */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* 1st = RIGHTMOST: יתרה נוכחית */}
@@ -200,7 +200,17 @@ function OwnerDashboardContent() {
           label={payoutLabel}
           value={formatCurrency(payoutAmount)}
         />
-        {/* 2nd: מספר הזמנות */}
+        {/* 2nd: כסף משוחרר לבנק */}
+        <StatCard
+          badge={depositAmount === null || depositAmount === undefined ? 'לא זמין' : depositAmount === 0 ? 'אין' : 'זמין'}
+          badgeColor={depositAmount && depositAmount > 0 ? 'text-[#006d43]' : 'text-gray-400'}
+          icon={CreditCard}
+          iconBg="bg-purple-50"
+          iconColor="text-purple-500"
+          label="כסף משוחרר לבנק"
+          value={depositAmount === null || depositAmount === undefined ? '—' : formatCurrency(depositAmount)}
+        />
+        {/* 3rd: מספר הזמנות */}
         <StatCard
           badge={`${changes.orders}%+`}
           badgeColor="text-[#006d43]"
@@ -209,16 +219,6 @@ function OwnerDashboardContent() {
           iconColor="text-[#006d43]"
           label="מספר הזמנות"
           value={totalOrders}
-        />
-        {/* 3rd: לקוחות חדשים */}
-        <StatCard
-          badge={`${changes.customers}+`}
-          badgeColor="text-blue-400"
-          icon={Users}
-          iconBg="bg-blue-50"
-          iconColor="text-blue-400"
-          label="לקוחות חדשים"
-          value={totalCustomers}
         />
         {/* 4th = LEFTMOST: צפיות בחנות */}
         <StatCard

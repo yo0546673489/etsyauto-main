@@ -156,8 +156,9 @@ async def get_dashboard_stats(
     else:
         new_orders_unread = total_orders
 
-    # ── Current balance (always the live Etsy account balance) ─────────
+    # ── Current balance + available for deposit ─────────────────────────
     available_for_payout = 0
+    available_for_deposit = None   # None = unknown (show —)
     payout_currency = "ILS"
     payout_label = "יתרה נוכחית"
 
@@ -177,8 +178,6 @@ async def get_dashboard_stats(
                 import logging as _log
                 _log.getLogger(__name__).warning(f"[BALANCE DEBUG] payment_account raw={acct!r}")
                 if acct and isinstance(acct, dict):
-                    # Etsy returns amounts as nested objects:
-                    # {"amount": -8080, "divisor": 100, "currency_code": "ILS"}
                     def _extract_amount(field_name: str):
                         obj = acct.get(field_name)
                         if obj is None:
@@ -190,7 +189,6 @@ async def get_dashboard_stats(
                             if amount is not None:
                                 return float(amount) / float(divisor), ccy
                         elif isinstance(obj, (int, float)):
-                            # flat value — assume already in currency units
                             return float(obj), acct.get("currency_code", "ILS")
                         return None, None
 
@@ -200,11 +198,18 @@ async def get_dashboard_stats(
                     if val is None:
                         val, ccy = _extract_amount("balance")
 
-                    _log.getLogger(__name__).warning(f"[BALANCE DEBUG] extracted val={val} ccy={ccy}")
+                    # available for deposit (what can be withdrawn to bank)
+                    dep_val, _ = _extract_amount("available_for_deposit")
+                    if dep_val is None:
+                        dep_val, _ = _extract_amount("pending_funds")
+
+                    _log.getLogger(__name__).warning(f"[BALANCE DEBUG] extracted val={val} ccy={ccy} deposit={dep_val}")
                     if val is not None:
                         available_for_payout = val
                         payout_currency = ccy or "ILS"
                         etsy_balance_fetched = True
+                    if dep_val is not None:
+                        available_for_deposit = dep_val
         except Exception as _e:
             import logging as _log2
             _log2.getLogger(__name__).warning(f"[BALANCE DEBUG] exception: {_e!r}")
@@ -233,6 +238,7 @@ async def get_dashboard_stats(
         "active_listings": active_listings,
         "new_orders_unread": new_orders_unread,
         "available_for_payout": available_for_payout,
+        "available_for_deposit": available_for_deposit,
         "payout_currency": payout_currency,
         "payout_label": payout_label,
         "date_filtered": date_filtered,
