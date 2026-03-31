@@ -71,6 +71,12 @@ export const msgConversationsApi = {
     apiFetch<{ success: boolean; ai_mode: boolean }>(`/conversations/${id}/ai-mode`, {
       method: 'PUT', body: JSON.stringify({ ai_mode }),
     }),
+  getGlobalAiMode: () =>
+    apiFetch<{ ai_mode: boolean; enabled: number; total: number }>('/conversations/ai-mode/global'),
+  setGlobalAiMode: (ai_mode: boolean) =>
+    apiFetch<{ success: boolean; ai_mode: boolean }>('/conversations/ai-mode/global', {
+      method: 'PUT', body: JSON.stringify({ ai_mode }),
+    }),
 };
 
 export const msgMessagesApi = {

@@ -36,7 +36,8 @@ export default function MessagesPage() {
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
   const [sendFailed, setSendFailed] = useState(false);
-  const [aiTogglingId, setAiTogglingId] = useState<number | null>(null);
+  const [globalAiMode, setGlobalAiMode] = useState(false);
+  const [aiToggling, setAiToggling] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [search, setSearch] = useState('');
   const [showMobileChat, setShowMobileChat] = useState(false);
@@ -47,6 +48,7 @@ export default function MessagesPage() {
   // Load messages-system stores once for name-based mapping
   useEffect(() => {
     msgStoresApi.getAll().then(setMsgStores).catch(() => {});
+    msgConversationsApi.getGlobalAiMode().then(r => setGlobalAiMode(r.ai_mode)).catch(() => {});
   }, []);
 
   // Map selected main-app shops → messages-system store IDs by exact name match
@@ -131,19 +133,17 @@ export default function MessagesPage() {
     setConversations(prev => prev.map(c => c.id === selectedId ? updated : c));
   };
 
-  const handleAiModeToggle = async () => {
-    if (!selectedId || !selectedConv || aiTogglingId === selectedId) return;
-    setAiTogglingId(selectedId);
-    const newMode = !selectedConv.ai_mode;
+  const handleGlobalAiToggle = async () => {
+    if (aiToggling) return;
+    setAiToggling(true);
+    const newMode = !globalAiMode;
     try {
-      await msgConversationsApi.setAiMode(selectedId, newMode);
-      const updated = { ...selectedConv, ai_mode: newMode };
-      setSelectedConv(updated);
-      setConversations(prev => prev.map(c => c.id === selectedId ? updated : c));
+      await msgConversationsApi.setGlobalAiMode(newMode);
+      setGlobalAiMode(newMode);
     } catch {
       // ignore
     } finally {
-      setAiTogglingId(null);
+      setAiToggling(false);
     }
   };
 
@@ -195,7 +195,7 @@ export default function MessagesPage() {
         >
           {/* Header */}
           <div className="px-5 pt-5 pb-3 flex-shrink-0">
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-3">
               <h1 className="text-xl font-black text-gray-800">הודעות</h1>
               {unreadCount > 0 && (
                 <span className="bg-[#006d43] text-white text-xs font-bold px-2 py-0.5 rounded-full">
@@ -203,6 +203,25 @@ export default function MessagesPage() {
                 </span>
               )}
             </div>
+            {/* Global AI Toggle */}
+            <button
+              onClick={handleGlobalAiToggle}
+              disabled={aiToggling}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-xl border mb-3 transition-all ${
+                globalAiMode
+                  ? 'bg-[#006d43]/10 border-[#006d43]/30 text-[#006d43]'
+                  : 'bg-gray-50 border-gray-200 text-gray-500'
+              } ${aiToggling ? 'opacity-50 cursor-wait' : 'hover:border-[#006d43]/50'}`}
+            >
+              <div className="flex items-center gap-2">
+                <Bot className={`w-4 h-4 ${globalAiMode ? 'text-[#006d43]' : 'text-gray-400'}`} />
+                <span className="text-sm font-medium">מענה AI אוטומטי</span>
+              </div>
+              {/* Toggle Switch */}
+              <div className={`relative w-10 h-5 rounded-full transition-colors ${globalAiMode ? 'bg-[#006d43]' : 'bg-gray-300'}`}>
+                <div className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${globalAiMode ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </div>
+            </button>
             {/* Search */}
             <div className="relative mb-3">
               <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -284,23 +303,6 @@ export default function MessagesPage() {
                   </p>
                 </div>
 
-                {/* AI Mode Toggle */}
-                <button
-                  onClick={handleAiModeToggle}
-                  disabled={aiTogglingId === selectedId}
-                  title={selectedConv.ai_mode ? 'מצב AI פעיל — לחץ לכיבוי' : 'AI כבוי — לחץ להפעלה'}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
-                    selectedConv.ai_mode
-                      ? 'bg-[#006d43] text-white border-[#006d43] hover:bg-[#005a37]'
-                      : 'bg-gray-50 text-gray-500 border-gray-200 hover:border-gray-300'
-                  } ${aiTogglingId === selectedId ? 'opacity-50 cursor-wait' : ''}`}
-                >
-                  {selectedConv.ai_mode
-                    ? <><Bot className="w-3.5 h-3.5" /><span>AI פעיל</span></>
-                    : <><Bot className="w-3.5 h-3.5 opacity-50" /><span>AI</span></>
-                  }
-                </button>
-
                 <select
                   value={selectedConv.status}
                   onChange={e => handleStatusChange(e.target.value)}
@@ -360,7 +362,7 @@ export default function MessagesPage() {
 
               {/* Reply Input */}
               <div className="flex-shrink-0 bg-white border-t border-gray-100 px-4 py-3">
-                {selectedConv.ai_mode && (
+                {globalAiMode && (
                   <div className="flex items-center gap-1.5 mb-2 text-xs text-[#006d43] font-medium">
                     <Bot className="w-3.5 h-3.5" />
                     <span>AI עונה אוטומטית — תוכל לכתוב ידנית בכל זמן</span>

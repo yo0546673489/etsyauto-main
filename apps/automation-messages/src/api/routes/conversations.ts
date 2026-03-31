@@ -37,7 +37,7 @@ export function createConversationRoutes(pool: Pool) {
       return { success: true };
     });
 
-    // Toggle AI mode for a conversation
+    // Toggle AI mode for a single conversation
     fastify.put('/:id/ai-mode', async (request) => {
       const { id } = request.params as any;
       const { ai_mode } = request.body as any;
@@ -45,11 +45,19 @@ export function createConversationRoutes(pool: Pool) {
       return { success: true, ai_mode: !!ai_mode };
     });
 
-    // Get AI mode status for a conversation
-    fastify.get('/:id/ai-mode', async (request) => {
-      const { id } = request.params as any;
-      const result = await pool.query('SELECT ai_mode FROM conversations WHERE id = $1', [id]);
-      return { ai_mode: result.rows[0]?.ai_mode ?? false };
+    // Global AI mode — GET current status
+    fastify.get('/ai-mode/global', async () => {
+      const result = await pool.query(`SELECT COUNT(*) as total, SUM(CASE WHEN ai_mode THEN 1 ELSE 0 END) as enabled FROM conversations`);
+      const total = parseInt(result.rows[0].total);
+      const enabled = parseInt(result.rows[0].enabled || '0');
+      return { ai_mode: total > 0 && enabled === total, enabled, total };
+    });
+
+    // Global AI mode — SET all conversations at once
+    fastify.put('/ai-mode/global', async (request) => {
+      const { ai_mode } = request.body as any;
+      await pool.query('UPDATE conversations SET ai_mode = $1', [!!ai_mode]);
+      return { success: true, ai_mode: !!ai_mode };
     });
   };
 }

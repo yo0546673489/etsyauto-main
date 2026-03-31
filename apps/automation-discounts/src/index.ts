@@ -42,7 +42,7 @@ async function main() {
     }
   }
 
-  const discountQueue = new Queue('discount-execute', {
+  const discountQueue = new Queue('etsy-discounts-execute', {
     connection: getRedisConnection(),
   });
 

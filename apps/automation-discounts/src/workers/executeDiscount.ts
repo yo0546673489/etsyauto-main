@@ -48,7 +48,7 @@ export function createDiscountWorker(pool: Pool, platformPool?: Pool) {
   }
 
   const worker = new Worker(
-    'discount-execute',
+    'etsy-discounts-execute',
     async (job: Job<DiscountJob>) => {
       const data = job.data;
       logger.info(`Processing discount job ${data.taskId}: ${data.taskType}`);
@@ -66,11 +66,15 @@ export function createDiscountWorker(pool: Pool, platformPool?: Pool) {
       const browserInfo = await adspower.openProfile(data.serialNumber);
       if (!browserInfo) throw new Error(`Failed to open AdsPower profile ${data.serialNumber}`);
 
+      // המתן שהדפדפן יהיה מוכן לגמרי לפני חיבור CDP
+      await new Promise(r => setTimeout(r, 5000 + Math.random() * 3000));
+
       let browser;
       try {
-        browser = await chromium.connectOverCDP(browserInfo.ws.puppeteer);
-        const context = browser.contexts()[0];
-        const page = context.pages()[0] || await context.newPage();
+        browser = await chromium.connectOverCDP(browserInfo.ws.puppeteer, { timeout: 60000 });
+        const context = browser.contexts()[0] || await browser.newContext();
+        // תמיד פותחים דף חדש — לא סומכים על דף קיים שעלול להיות סגור
+        const page = await context.newPage();
 
         const discountManager = new EtsyDiscountManager(page);
 
