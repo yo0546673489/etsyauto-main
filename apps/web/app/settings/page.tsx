@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { useShop } from '@/lib/shop-context';
 import { useLanguage } from '@/lib/language-context';
+import { useCurrency, type CurrencyCode } from '@/lib/currency-context';
 import { shopsApi, teamApi, userPreferencesApi, currencyApi, type Shop, type ApiError, type TeamMember } from '@/lib/api';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { DashboardCard } from '@/components/dashboard/DashboardCard';
@@ -27,6 +28,7 @@ function SettingsContent() {
   const { user } = useAuth();
   const { refreshShops } = useShop();
   const { t } = useLanguage();
+  const { setCurrency } = useCurrency();
   const router = useRouter();
   const searchParams = useSearchParams();
   const tabParam = searchParams.get('tab') as TabType | null;
@@ -119,6 +121,7 @@ function SettingsContent() {
         currencyApi.getSupported(),
       ]);
       setPreferredCurrency(prefs.preferred_currency_code);
+      setCurrency(prefs.preferred_currency_code as CurrencyCode);
       setSupportedCurrencies(supported.currencies || []);
     } catch {
       setSupportedCurrencies(['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'ILS', 'JPY', 'MXN', 'BRL']);
@@ -132,6 +135,7 @@ function SettingsContent() {
       setSavingCurrency(true);
       const updated = await userPreferencesApi.update(preferredCurrency);
       setPreferredCurrency(updated.preferred_currency_code);
+      setCurrency(updated.preferred_currency_code as CurrencyCode);
       setNotification({
         show: true,
         type: 'success',

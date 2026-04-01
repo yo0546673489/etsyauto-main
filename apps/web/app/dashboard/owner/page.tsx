@@ -11,7 +11,8 @@ import { useCurrency } from '@/lib/currency-context';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import OnboardingModal from '@/components/OnboardingModal';
 import { DisconnectedShopBanner } from '@/components/ui/DisconnectedShopBanner';
-import { onboardingApi, dashboardApi, type DashboardStats, type DashboardOrder } from '@/lib/api';
+import { onboardingApi, dashboardApi, userPreferencesApi, type DashboardStats, type DashboardOrder } from '@/lib/api';
+import { type CurrencyCode } from '@/lib/currency-context';
 import { ORDER_STATUS_LABELS, ORDER_STATUS_BADGE_CLASSES, normalizeOrderStatus } from '@/lib/order-status';
 import { cn } from '@/lib/utils';
 import {
@@ -82,7 +83,7 @@ function OwnerDashboardContent() {
   const { showToast } = useToast();
   const { t } = useLanguage();
   const { selectedShop, selectedShopIds } = useShop();
-  const { currency: displayCurrency } = useCurrency();
+  const { currency: displayCurrency, setCurrency } = useCurrency();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<DashboardOrder[]>([]);
@@ -98,6 +99,15 @@ function OwnerDashboardContent() {
     };
     if (user) checkOnboarding();
   }, [user]);
+
+  // Sync currency preference from backend on first load
+  useEffect(() => {
+    userPreferencesApi.get().then(prefs => {
+      if (prefs.preferred_currency_code) {
+        setCurrency(prefs.preferred_currency_code as CurrencyCode);
+      }
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     const load = async () => {
