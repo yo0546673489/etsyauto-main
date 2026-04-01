@@ -39,6 +39,7 @@ async def get_dashboard_stats(
     shop_ids: str | None = None,
     start_date: Optional[date] = Query(None, description="Filter start date (YYYY-MM-DD)"),
     end_date: Optional[date] = Query(None, description="Filter end date (YYYY-MM-DD)"),
+    display_currency: Optional[str] = Query(None, description="Target currency for balance conversion (e.g. ILS, USD)"),
     context: UserContext = Depends(get_user_context),
     db: Session = Depends(get_db)
 ):
@@ -231,6 +232,22 @@ async def get_dashboard_stats(
             available_for_payout = 0
             payout_currency = "ILS"
 
+    # ── Currency conversion for display ────────────────────────────────
+    display_amount = None
+    display_currency_out = None
+    if display_currency:
+        target_ccy = display_currency.upper().strip()
+        if target_ccy in SUPPORTED_CURRENCIES and target_ccy != payout_currency and available_for_payout is not None:
+            try:
+                amount_cents = int(round(available_for_payout * 100))
+                converted_cents, _rate, _retrieved, _stale = convert_amount(
+                    amount_cents, payout_currency, target_ccy, db=db
+                )
+                display_amount = converted_cents / 100
+                display_currency_out = target_ccy
+            except Exception:
+                pass
+
     return {
         "total_products": total_products,
         "published_products": published_products,
@@ -244,6 +261,8 @@ async def get_dashboard_stats(
         "available_for_deposit": available_for_deposit,
         "payout_currency": payout_currency,
         "payout_label": payout_label,
+        "display_amount": display_amount,
+        "display_currency": display_currency_out,
         "date_filtered": date_filtered,
         "changes": {
             "products": 12,

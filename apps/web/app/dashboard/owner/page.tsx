@@ -7,6 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 import { useToast } from '@/lib/toast-context';
 import { useLanguage } from '@/lib/language-context';
 import { useShop } from '@/lib/shop-context';
+import { useCurrency } from '@/lib/currency-context';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import OnboardingModal from '@/components/OnboardingModal';
 import { DisconnectedShopBanner } from '@/components/ui/DisconnectedShopBanner';
@@ -81,6 +82,7 @@ function OwnerDashboardContent() {
   const { showToast } = useToast();
   const { t } = useLanguage();
   const { selectedShop, selectedShopIds } = useShop();
+  const { currency: displayCurrency } = useCurrency();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<DashboardOrder[]>([]);
@@ -104,7 +106,7 @@ function OwnerDashboardContent() {
         const shopOpts = selectedShopIds.length > 0 ? { shopIds: selectedShopIds } : { shopId: selectedShop?.id };
         const dateOpts = { startDate: dateRange.startDate, endDate: dateRange.endDate };
         const [statsData, ordersData] = await Promise.all([
-          dashboardApi.getStats({ ...shopOpts, ...dateOpts }),
+          dashboardApi.getStats({ ...shopOpts, ...dateOpts, displayCurrency }),
           dashboardApi.getRecentOrders(5, { ...shopOpts, ...dateOpts }),
         ]);
         setStats(statsData);
@@ -116,7 +118,7 @@ function OwnerDashboardContent() {
       }
     };
     if (!showOnboarding) load();
-  }, [selectedShopIds, showOnboarding, dateRange]);
+  }, [selectedShopIds, showOnboarding, dateRange, displayCurrency]);
 
   const handleCompleteOnboarding = async (shopName: string, description: string | null) => {
     await onboardingApi.complete(shopName, description);
@@ -138,7 +140,15 @@ function OwnerDashboardContent() {
     );
   }
 
-  const payoutAmount      = stats.available_for_payout || 0;
+  // Format currency — prefer server-converted display_amount when available
+  const shopCurrency = stats?.payout_currency || 'ILS';
+  // If server returned a converted amount (e.g. USD→ILS), use it for the payout card
+  const convertedPayoutAmount = stats?.display_amount ?? null;
+  const convertedPayoutCurrency = stats?.display_currency ?? null;
+
+  const payoutAmountRaw   = stats.available_for_payout || 0;
+  // Use converted amount if server returned one (e.g. USD shop → ILS display)
+  const payoutAmount      = convertedPayoutAmount !== null ? convertedPayoutAmount : payoutAmountRaw;
   const depositAmount     = stats.available_for_deposit;   // null = unknown
   const payoutLabel       = stats.payout_label || 'יתרה נוכחית';
   const totalOrders       = stats.total_orders || 0;
@@ -149,23 +159,22 @@ function OwnerDashboardContent() {
   const shopViews      = todayVisits > 0 ? todayVisits : (isToday ? null : totalViews);
   const changes        = stats.changes || { products: 0, customers: 0, orders: 0, listings: 0 };
 
-  // Format currency using shop's native currency (payout_currency from Etsy)
-  // Values from API are already in decimal (divided by 100 server-side)
-  const shopCurrency = stats?.payout_currency || 'ILS';
-  const formatCurrency = (amount: number) => {
+  const formatCurrencyWith = (amount: number, currencyCode: string) => {
     try {
       const formatted = new Intl.NumberFormat('he-IL', {
         style: 'currency',
-        currency: shopCurrency,
+        currency: currencyCode,
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       }).format(Math.abs(amount));
       return amount < 0 ? `-${formatted}` : formatted;
     } catch {
       const str = Math.abs(amount).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      return amount < 0 ? `-${shopCurrency} ${str}` : `${shopCurrency} ${str}`;
+      return amount < 0 ? `-${currencyCode} ${str}` : `${currencyCode} ${str}`;
     }
   };
+
+  const formatCurrency = (amount: number) => formatCurrencyWith(amount, shopCurrency);
 
   // Format large numbers: 1234 → 1.2k
   const formatCompact = (n: number) => {
@@ -209,7 +218,7 @@ function OwnerDashboardContent() {
           iconBg={payoutAmount < 0 ? 'bg-red-50' : 'bg-green-50'}
           iconColor={payoutAmount < 0 ? 'text-red-500' : 'text-[#006d43]'}
           label={payoutLabel}
-          value={formatCurrency(payoutAmount)}
+          value={formatCurrencyWith(payoutAmount, convertedPayoutCurrency || shopCurrency)}
         />
         {/* 2nd: כסף משוחרר לבנק */}
         <StatCard

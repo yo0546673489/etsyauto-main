@@ -606,6 +606,7 @@ export interface ShopQueryOptions {
   shopIds?: number[];
   startDate?: string;  // YYYY-MM-DD
   endDate?: string;    // YYYY-MM-DD
+  displayCurrency?: string;
 }
 
 function _appendShopParams(params: URLSearchParams, options: ShopQueryOptions) {
@@ -616,6 +617,7 @@ function _appendShopParams(params: URLSearchParams, options: ShopQueryOptions) {
   }
   if (options.startDate) params.append('start_date', options.startDate);
   if (options.endDate)   params.append('end_date', options.endDate);
+  if (options.displayCurrency) params.append('display_currency', options.displayCurrency);
 }
 
 export const ordersApi = {
@@ -869,6 +871,8 @@ export interface DashboardStats {
   available_for_deposit?: number | null;
   payout_currency?: string;
   payout_label?: string;
+  display_amount?: number | null;
+  display_currency?: string | null;
   date_filtered?: boolean;
   changes: {
     products: number;
