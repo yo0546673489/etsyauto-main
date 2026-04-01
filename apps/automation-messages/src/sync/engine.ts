@@ -97,7 +97,11 @@ export class SyncEngine {
       }
 
       await client.query('COMMIT');
-      logger.info(`Synced conversation ${conversationId}: ${newMessages} new messages`);
+      if (scraped.messages.length === 0) {
+        logger.warn(`[SyncEngine] ⚠️ Synced conversation ${conversationId} but scraper returned 0 messages — profile may need re-authentication`);
+      } else {
+        logger.info(`[SyncEngine] ✓ Synced conversation ${conversationId}: ${newMessages} new messages out of ${scraped.messages.length} scraped`);
+      }
 
       // If new customer messages arrived AND ai_mode is ON → trigger auto-reply
       if (newMessages > 0 && this.jobQueue) {
