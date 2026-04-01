@@ -415,11 +415,12 @@ const TABS = [
 ];
 
 export default function DiscountsPage() {
-  const { selectedShop } = useShop();
+  const { shops, selectedShop } = useShop();
   const { showToast } = useToast();
 
   const [tab, setTab] = useState('all');
-  const [rules, setRules] = useState<DiscountRule[]>([]);
+  // map: shopId → rules
+  const [rulesByShop, setRulesByShop] = useState<Record<number, DiscountRule[]>>({});
   const [tasks, setTasks] = useState<DiscountTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -428,38 +429,48 @@ export default function DiscountsPage() {
   const shopId = selectedShop?.id;
 
   const loadData = useCallback(async () => {
-    if (!shopId) { setLoading(false); return; }
+    if (!shops.length) { setLoading(false); return; }
     setLoading(true);
     try {
-      const [rulesData, tasksData] = await Promise.all([
-        discountsApi.getRules(shopId),
-        discountsApi.getTasks(shopId),
-      ]);
-      setRules(rulesData);
-      setTasks(tasksData);
+      // טען הנחות לכל החנויות במקביל
+      const results = await Promise.all(
+        shops.map(s => discountsApi.getRules(s.id).then(r => ({ shopId: s.id, rules: r })).catch(() => ({ shopId: s.id, rules: [] as DiscountRule[] })))
+      );
+      const map: Record<number, DiscountRule[]> = {};
+      for (const { shopId: sid, rules } of results) map[sid] = rules;
+      setRulesByShop(map);
+
+      // טען tasks רק לחנות הנבחרת (היסטוריה)
+      if (shopId) {
+        const tasksData = await discountsApi.getTasks(shopId).catch(() => [] as DiscountTask[]);
+        setTasks(tasksData);
+      }
     } catch {
       showToast('שגיאה בטעינת ההנחות', 'error');
     } finally {
       setLoading(false);
     }
-  }, [shopId]);
+  }, [shops, shopId]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // כל הכללים מכל החנויות
+  const allRules = Object.values(rulesByShop).flat();
   const filteredRules = tab === 'all' || tab === 'history'
-    ? rules
-    : rules.filter(r => r.status === tab);
+    ? allRules
+    : allRules.filter(r => r.status === tab);
 
   const handleSave = async (data: Partial<DiscountRule>, _activate: boolean) => {
     if (!shopId) return;
     try {
       if (editingRule) {
-        const updated = await discountsApi.updateRule(shopId, editingRule.id, data);
-        setRules(prev => prev.map(r => r.id === updated.id ? updated : r));
+        const ruleShopId = editingRule.shop_id ?? shopId;
+        const updated = await discountsApi.updateRule(ruleShopId, editingRule.id, data);
+        setRulesByShop(prev => ({ ...prev, [ruleShopId]: (prev[ruleShopId] || []).map(r => r.id === updated.id ? updated : r) }));
         showToast('הנחה עודכנה בהצלחה', 'success');
       } else {
         const created = await discountsApi.createRule(shopId, data);
-        setRules(prev => [created, ...prev]);
+        setRulesByShop(prev => ({ ...prev, [shopId]: [created, ...(prev[shopId] || [])] }));
         showToast('הנחה נוצרה בהצלחה', 'success');
       }
       setShowModal(false);
@@ -471,20 +482,22 @@ export default function DiscountsPage() {
   };
 
   const handleToggle = async (rule: DiscountRule) => {
-    if (!shopId) return;
+    const ruleShopId = rule.shop_id ?? shopId;
+    if (!ruleShopId) return;
     try {
-      const updated = await discountsApi.toggleRule(shopId, rule.id);
-      setRules(prev => prev.map(r => r.id === updated.id ? updated : r));
+      const updated = await discountsApi.toggleRule(ruleShopId, rule.id);
+      setRulesByShop(prev => ({ ...prev, [ruleShopId]: (prev[ruleShopId] || []).map(r => r.id === updated.id ? updated : r) }));
     } catch {
       showToast('שגיאה בשינוי הסטטוס', 'error');
     }
   };
 
   const handleDelete = async (rule: DiscountRule) => {
-    if (!shopId || !confirm(`למחוק את "${rule.name}"?`)) return;
+    const ruleShopId = rule.shop_id ?? shopId;
+    if (!ruleShopId || !confirm(`למחוק את "${rule.name}"?`)) return;
     try {
-      await discountsApi.deleteRule(shopId, rule.id);
-      setRules(prev => prev.filter(r => r.id !== rule.id));
+      await discountsApi.deleteRule(ruleShopId, rule.id);
+      setRulesByShop(prev => ({ ...prev, [ruleShopId]: (prev[ruleShopId] || []).filter(r => r.id !== rule.id) }));
       showToast('הנחה נמחקה', 'success');
     } catch {
       showToast('שגיאה במחיקה', 'error');
@@ -554,7 +567,7 @@ export default function DiscountsPage() {
               {t.label}
               {t.key !== 'history' && t.key !== 'all' && (
                 <span className="mr-1.5 text-xs opacity-70">
-                  ({rules.filter(r => r.status === t.key).length})
+                  ({allRules.filter(r => r.status === t.key).length})
                 </span>
               )}
             </button>
@@ -624,34 +637,47 @@ export default function DiscountsPage() {
             )}
           </div>
         ) : (
-          /* Rules list */
-          <div className="space-y-3">
-            {filteredRules.length === 0 ? (
+          /* Rules list — grouped by shop */
+          <div className="space-y-6">
+            {shops.length === 0 ? (
               <div className="bg-white rounded-xl p-12 text-center shadow-sm border border-gray-100">
                 <Tag className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                <h3 className="text-lg font-medium text-gray-600 mb-2">אין כללי הנחה</h3>
-                <p className="text-gray-400 text-sm mb-4">לחץ "הנחה חדשה" כדי ליצור כלל</p>
-                <button
-                  onClick={() => { setEditingRule(undefined); setShowModal(true); }}
-                  disabled={!shopId}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#006d43] text-white rounded-lg font-medium hover:bg-[#005535] transition-colors disabled:opacity-50 text-sm"
-                >
-                  <Plus className="w-4 h-4" />
-                  הנחה חדשה
-                </button>
+                <p className="text-gray-400 text-sm">אין חנויות מחוברות</p>
               </div>
-            ) : (
-              filteredRules.map(rule => (
-                <RuleCard
-                  key={rule.id}
-                  rule={rule}
-                  onToggle={() => handleToggle(rule)}
-                  onEdit={() => { setEditingRule(rule); setShowModal(true); }}
-                  onDelete={() => handleDelete(rule)}
-                  onTriggerRotation={rule.auto_rotate ? () => handleTriggerRotation(rule) : undefined}
-                />
-              ))
-            )}
+            ) : shops.map(shop => {
+              const shopRules = (rulesByShop[shop.id] || []).filter(r =>
+                tab === 'all' ? true : r.status === tab
+              );
+              return (
+                <div key={shop.id}>
+                  {/* Shop header */}
+                  <div className="flex items-center gap-2 mb-2 px-1">
+                    <span className="font-semibold text-gray-700 text-base">{shop.display_name}</span>
+                    <span className="text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                      {shopRules.filter(r => r.status === 'active').length} פעיל
+                    </span>
+                  </div>
+                  {shopRules.length === 0 ? (
+                    <div className="bg-white rounded-xl p-5 text-center shadow-sm border border-gray-100 text-gray-400 text-sm">
+                      אין כללי הנחה לחנות זו
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {shopRules.map(rule => (
+                        <RuleCard
+                          key={rule.id}
+                          rule={rule}
+                          onToggle={() => handleToggle(rule)}
+                          onEdit={() => { setEditingRule(rule); setShowModal(true); }}
+                          onDelete={() => handleDelete(rule)}
+                          onTriggerRotation={rule.auto_rotate ? () => handleTriggerRotation(rule) : undefined}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
