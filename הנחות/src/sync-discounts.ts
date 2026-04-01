@@ -66,72 +66,128 @@ async function closeProfile(profileId: string): Promise<void> {
 
 // ─── Human warmup before navigating to target page ───────────────────────────
 
-const WARMUP_PAGES = [
-  'https://www.etsy.com',
-  'https://www.etsy.com/your/shops/me',
-  'https://www.etsy.com/your/shops/me/listings',
-  'https://www.etsy.com/your/shops/me/orders',
-];
+// דפי ביניים אפשריים — מגוון כדי שלא תמיד אותו נתיב
+const WARMUP_POOLS = {
+  etsy_home: 'https://www.etsy.com',
+  shop_manager: 'https://www.etsy.com/your/shops/me',
+  listings: 'https://www.etsy.com/your/shops/me/listings',
+  orders: 'https://www.etsy.com/your/shops/me/orders',
+  stats: 'https://www.etsy.com/your/shops/me/stats',
+  inbox: 'https://www.etsy.com/your/shops/me/messages',
+};
+const WARMUP_URLS = Object.values(WARMUP_POOLS);
+
+/** עצור בין פעולות — תמיד אקראי, אף פעם לא אותו זמן */
+function rnd(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+function pause(min: number, max: number) {
+  return new Promise<void>(res => setTimeout(res, rnd(min, max)));
+}
+
+/** תנועת עכבר לנקודה אקראית על המסך בצורה אנושית */
+async function moveMouse(page: any) {
+  const x = rnd(80, 1200);
+  const y = rnd(80, 700);
+  const steps = rnd(12, 30);
+  await page.mouse.move(x, y, { steps }).catch(() => {});
+  await pause(150, 500);
+}
+
+/** גלילה אנושית: מספר צעדים אקראי, גודל צעד אקראי, עם רעש */
+async function humanScroll(page: any, direction: 'down' | 'up', totalPx: number) {
+  const steps = rnd(3, 7);
+  const sign = direction === 'down' ? 1 : -1;
+  for (let i = 0; i < steps; i++) {
+    const stepPx = Math.floor(totalPx / steps) + rnd(-25, 25);
+    await page.mouse.wheel(0, stepPx * sign);
+    await pause(40, 180);
+  }
+  await pause(400, 1200);
+}
 
 /**
- * מבצע פעולות אנושיות לפני ניווט לדף היעד:
- * - נווט לדף ביניים אקראי (לא ישר לדף ההנחות)
- * - גלול מעט
- * - הזז עכבר
- * - המתן זמן קריאה אקראי
- * - רק אז נווט לדף היעד
+ * Warmup אנושי מלא לפני ניווט לדף היעד.
+ * - עובר על 1–3 דפים ביניים אקראיים
+ * - בכל דף: גלילה, תנועות עכבר, השהיות — הכל אקראי
+ * - רק בסוף מגיע לדף היעד
  */
 async function humanWarmupThenNavigate(page: any, targetUrl: string): Promise<void> {
-  const human = new HumanBehavior(page);
-  const r = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
-
   const currentUrl = page.url();
 
-  // אם כבר בדף היעד — רק גלול ואל תנווט שוב
-  if (currentUrl === targetUrl || currentUrl.includes('sales-discounts')) {
-    log(`  🏠 Already on target page — scrolling + pause`);
-    await human.humanScroll('down', r(100, 250));
-    await new Promise(res => setTimeout(res, r(1500, 3000)));
-    await human.randomMouseMovement();
+  // אם כבר בדף היעד — פעולות קצרות ויוצאים
+  if (currentUrl.includes('sales-discounts')) {
+    log(`  🏠 Already on target — quick scroll + mouse`);
+    await humanScroll(page, 'down', rnd(80, 200));
+    await moveMouse(page);
+    await pause(1200, 2500);
     return;
   }
 
-  // 1. בחר דף ביניים אקראי
-  const warmupUrl = WARMUP_PAGES[r(0, WARMUP_PAGES.length - 1)];
-  log(`  🚶 Warmup: navigating to intermediate page: ${warmupUrl}`);
+  // כמה דפי ביניים לעבור — 1 עד 3
+  const numStops = rnd(1, 3);
+  // בחר דפים אקראיים (בלי חזרה)
+  const shuffled = [...WARMUP_URLS].sort(() => Math.random() - 0.5);
+  const stops = shuffled.slice(0, numStops);
 
-  await page.goto(warmupUrl, { waitUntil: 'domcontentloaded', timeout: 25000 }).catch(() => {});
-  await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-  await new Promise(res => setTimeout(res, r(1500, 3500)));
+  log(`  🚶 Warmup: ${numStops} stop(s) before target`);
 
-  // 2. גלול מעט
-  await human.humanScroll('down', r(150, 400));
-  await new Promise(res => setTimeout(res, r(800, 2000)));
+  for (let i = 0; i < stops.length; i++) {
+    const url = stops[i];
+    log(`  [${i + 1}/${numStops}] → ${url}`);
 
-  // 3. תנועת עכבר אקראית (תמיד, לא רק 30%)
-  await human.randomMouseMovement();
-  await new Promise(res => setTimeout(res, r(500, 1200)));
+    // נווט לדף הביניים
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 }).catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
+    await pause(rnd(1200, 3000), rnd(3000, 5500)); // זמן "קריאה" ראשוני
 
-  // 4. גלול חזרה קצת
-  if (Math.random() < 0.5) {
-    await human.humanScroll('up', r(50, 150));
-    await new Promise(res => setTimeout(res, r(400, 900)));
+    // תנועות עכבר אקראיות — 2 עד 5 פעמים
+    const mouseRounds = rnd(2, 5);
+    for (let m = 0; m < mouseRounds; m++) {
+      await moveMouse(page);
+      await pause(200, 700);
+    }
+
+    // גלילה למטה
+    const scrollDown = rnd(150, 600);
+    await humanScroll(page, 'down', scrollDown);
+
+    // 50% מהפעמים — גלול עוד קצת
+    if (Math.random() < 0.5) {
+      await pause(500, 1500);
+      await humanScroll(page, 'down', rnd(100, 300));
+    }
+
+    // 40% מהפעמים — גלול חזרה למעלה קצת
+    if (Math.random() < 0.4) {
+      await pause(400, 1000);
+      await humanScroll(page, 'up', rnd(80, 200));
+    }
+
+    // תנועת עכבר אחרונה בדף זה
+    await moveMouse(page);
+    await pause(rnd(600, 1800), rnd(1800, 4000));
   }
 
-  // 5. השהיה "חשיבה" לפני המעבר לדף היעד
-  const thinkMs = r(2000, 5000);
-  log(`  💭 Thinking for ${Math.round(thinkMs / 1000)}s before target page...`);
-  await new Promise(res => setTimeout(res, thinkMs));
+  // השהיית "חשיבה" לפני דף היעד
+  const thinkMs = rnd(2500, 6000);
+  log(`  💭 Thinking ${Math.round(thinkMs / 1000)}s → then target page`);
+  await pause(thinkMs, thinkMs + rnd(0, 1000));
 
-  // 6. נווט לדף היעד
-  log(`  🎯 Navigating to target: ${targetUrl}`);
+  // נווט לדף היעד
+  log(`  🎯 → ${targetUrl}`);
   await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(async (e: any) => {
     log(`  ⚠️ Navigation failed: ${e.message} — retrying`);
-    await new Promise(res => setTimeout(res, 3000));
+    await pause(2500, 4000);
     await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
   });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
-  await new Promise(res => setTimeout(res, r(2000, 4000)));
+
+  // פעולות ראשונות בדף היעד — כאילו "הגעתי ומסתכל"
+  await pause(rnd(1500, 3500), rnd(3500, 6000));
+  await moveMouse(page);
+  await humanScroll(page, 'down', rnd(80, 200));
+  await pause(800, 2000);
 }
 
 // ─── Single tab enforcement ───────────────────────────────────────────────────
