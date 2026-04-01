@@ -64,130 +64,166 @@ async function closeProfile(profileId: string): Promise<void> {
   log(`  🔒 Profile ${profileId} closed`);
 }
 
-// ─── Human warmup before navigating to target page ───────────────────────────
+// ─── Human behavior helpers ───────────────────────────────────────────────────
 
-// דפי ביניים אפשריים — מגוון כדי שלא תמיד אותו נתיב
-const WARMUP_POOLS = {
-  etsy_home: 'https://www.etsy.com',
-  shop_manager: 'https://www.etsy.com/your/shops/me',
-  listings: 'https://www.etsy.com/your/shops/me/listings',
-  orders: 'https://www.etsy.com/your/shops/me/orders',
-  stats: 'https://www.etsy.com/your/shops/me/stats',
-  inbox: 'https://www.etsy.com/your/shops/me/messages',
-};
-const WARMUP_URLS = Object.values(WARMUP_POOLS);
-
-/** עצור בין פעולות — תמיד אקראי, אף פעם לא אותו זמן */
+/** רנדום מספר שלם בין min ל-max */
 function rnd(min: number, max: number) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
+/** השהיה אקראית */
 function pause(min: number, max: number) {
   return new Promise<void>(res => setTimeout(res, rnd(min, max)));
 }
 
-/** תנועת עכבר לנקודה אקראית על המסך בצורה אנושית */
+/** תנועת עכבר אנושית לנקודה אקראית */
 async function moveMouse(page: any) {
-  const x = rnd(80, 1200);
-  const y = rnd(80, 700);
-  const steps = rnd(12, 30);
-  await page.mouse.move(x, y, { steps }).catch(() => {});
-  await pause(150, 500);
+  const x = rnd(60, 1300);
+  const y = rnd(60, 750);
+  await page.mouse.move(x, y, { steps: rnd(10, 35) }).catch(() => {});
+  await pause(100, 600);
 }
 
-/** גלילה אנושית: מספר צעדים אקראי, גודל צעד אקראי, עם רעש */
+/** מספר תנועות עכבר עם הפסקות אקראיות */
+async function mouseSession(page: any, minMoves = 2, maxMoves = 6) {
+  const n = rnd(minMoves, maxMoves);
+  for (let i = 0; i < n; i++) {
+    await moveMouse(page);
+    // לפעמים עצור יותר זמן — כאילו מסתכל על משהו
+    if (Math.random() < 0.3) await pause(600, 2000);
+    else await pause(100, 500);
+  }
+}
+
+/** גלילה אנושית: צעדים אקראיים + רעש */
 async function humanScroll(page: any, direction: 'down' | 'up', totalPx: number) {
-  const steps = rnd(3, 7);
+  const steps = rnd(3, 8);
   const sign = direction === 'down' ? 1 : -1;
   for (let i = 0; i < steps; i++) {
-    const stepPx = Math.floor(totalPx / steps) + rnd(-25, 25);
+    const stepPx = Math.floor(totalPx / steps) + rnd(-30, 30);
     await page.mouse.wheel(0, stepPx * sign);
-    await pause(40, 180);
+    await pause(30, 200);
   }
-  await pause(400, 1200);
+  await pause(300, 1000);
 }
 
+/** "קריאת דף" — גלילה הדרגתית עם עצירות, כאילו קוראים */
+async function readPage(page: any) {
+  // גלול למטה בכמה גלים — כאילו קוראים פסקה פסקה
+  const waves = rnd(2, 5);
+  for (let w = 0; w < waves; w++) {
+    await humanScroll(page, 'down', rnd(100, 350));
+    // עצור "לקרוא" — זמן שונה בכל פעם
+    await pause(rnd(800, 3000), rnd(3000, 7000));
+    // לפעמים הזז עכבר בין קטעים
+    if (Math.random() < 0.6) await moveMouse(page);
+  }
+  // לפעמים גלול קצת חזרה למעלה — כמו שחוזרים לקרוא משהו
+  if (Math.random() < 0.35) {
+    await pause(500, 1500);
+    await humanScroll(page, 'up', rnd(80, 250));
+    await pause(800, 2500);
+    await humanScroll(page, 'down', rnd(50, 150));
+  }
+}
+
+// ─── Pool of warmup URLs ──────────────────────────────────────────────────────
+
+const WARMUP_URLS = [
+  'https://www.etsy.com',
+  'https://www.etsy.com/your/shops/me',
+  'https://www.etsy.com/your/shops/me/listings',
+  'https://www.etsy.com/your/shops/me/orders',
+  'https://www.etsy.com/your/shops/me/stats',
+  'https://www.etsy.com/your/shops/me/messages',
+  'https://www.etsy.com/your/shops/me/dashboard',
+];
+
 /**
- * Warmup אנושי מלא לפני ניווט לדף היעד.
- * - עובר על 1–3 דפים ביניים אקראיים
- * - בכל דף: גלילה, תנועות עכבר, השהיות — הכל אקראי
- * - רק בסוף מגיע לדף היעד
+ * ─── Human warmup ────────────────────────────────────────────────────────────
+ *
+ * מדמה התנהגות גולש אמיתי לפני כניסה לדף היעד:
+ *
+ * מצב A (20%): נכנס ישר לדף היעד — אבל עם mouse + גלילה ראשונית
+ * מצב B (50%): עובר דף אחד לפני — גלישה, עכבר, קריאה
+ * מצב C (30%): עובר 2–3 דפים לפני — גלישה מעמיקה בכל אחד
+ *
+ * הכל אקראי: מספר דפים, איזה דפים, כמה זמן בכל דף, תנועות העכבר, הגלילה.
  */
 async function humanWarmupThenNavigate(page: any, targetUrl: string): Promise<void> {
   const currentUrl = page.url();
 
-  // אם כבר בדף היעד — פעולות קצרות ויוצאים
+  // אם כבר בדף היעד — רק הופעה טבעית ויוצאים
   if (currentUrl.includes('sales-discounts')) {
-    log(`  🏠 Already on target — quick scroll + mouse`);
-    await humanScroll(page, 'down', rnd(80, 200));
-    await moveMouse(page);
-    await pause(1200, 2500);
+    log(`  🏠 Already on target — simulating natural arrival`);
+    await mouseSession(page, 1, 3);
+    await humanScroll(page, 'down', rnd(60, 180));
+    await pause(1000, 2500);
     return;
   }
 
-  // כמה דפי ביניים לעבור — 1 עד 3
-  const numStops = rnd(1, 3);
-  // בחר דפים אקראיים (בלי חזרה)
-  const shuffled = [...WARMUP_URLS].sort(() => Math.random() - 0.5);
-  const stops = shuffled.slice(0, numStops);
-
-  log(`  🚶 Warmup: ${numStops} stop(s) before target`);
-
-  for (let i = 0; i < stops.length; i++) {
-    const url = stops[i];
-    log(`  [${i + 1}/${numStops}] → ${url}`);
-
-    // נווט לדף הביניים
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 }).catch(() => {});
-    await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
-    await pause(rnd(1200, 3000), rnd(3000, 5500)); // זמן "קריאה" ראשוני
-
-    // תנועות עכבר אקראיות — 2 עד 5 פעמים
-    const mouseRounds = rnd(2, 5);
-    for (let m = 0; m < mouseRounds; m++) {
-      await moveMouse(page);
-      await pause(200, 700);
-    }
-
-    // גלילה למטה
-    const scrollDown = rnd(150, 600);
-    await humanScroll(page, 'down', scrollDown);
-
-    // 50% מהפעמים — גלול עוד קצת
-    if (Math.random() < 0.5) {
-      await pause(500, 1500);
-      await humanScroll(page, 'down', rnd(100, 300));
-    }
-
-    // 40% מהפעמים — גלול חזרה למעלה קצת
-    if (Math.random() < 0.4) {
-      await pause(400, 1000);
-      await humanScroll(page, 'up', rnd(80, 200));
-    }
-
-    // תנועת עכבר אחרונה בדף זה
-    await moveMouse(page);
-    await pause(rnd(600, 1800), rnd(1800, 4000));
+  // ─── בחר מצב אקראי ───────────────────────────────────────────────────────
+  const roll = Math.random();
+  let numStops: number;
+  if (roll < 0.20) {
+    numStops = 0;  // 20% — ישר לדף
+    log(`  ⚡ Mode A: going directly to target (with natural entry)`);
+  } else if (roll < 0.70) {
+    numStops = 1;  // 50% — דף אחד לפני
+    log(`  🚶 Mode B: 1 stop before target`);
+  } else {
+    numStops = rnd(2, 3);  // 30% — 2-3 דפים לפני
+    log(`  🏃 Mode C: ${numStops} stops before target`);
   }
 
-  // השהיית "חשיבה" לפני דף היעד
-  const thinkMs = rnd(2500, 6000);
-  log(`  💭 Thinking ${Math.round(thinkMs / 1000)}s → then target page`);
-  await pause(thinkMs, thinkMs + rnd(0, 1000));
+  // ─── דפי ביניים ───────────────────────────────────────────────────────────
+  if (numStops > 0) {
+    const shuffled = [...WARMUP_URLS].sort(() => Math.random() - 0.5);
+    const stops = shuffled.slice(0, numStops);
 
-  // נווט לדף היעד
+    for (let i = 0; i < stops.length; i++) {
+      const url = stops[i];
+      log(`  [${i + 1}/${numStops}] → ${url}`);
+
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 25000 }).catch(() => {});
+      await page.waitForLoadState('networkidle', { timeout: 12000 }).catch(() => {});
+
+      // הגעה ראשונית — עכבר קצר + השהיה
+      await mouseSession(page, 1, 3);
+      await pause(rnd(800, 2500), rnd(2500, 5000));
+
+      // "קריאת" הדף
+      await readPage(page);
+
+      // עכבר נוסף לפני יציאה
+      await mouseSession(page, 1, 4);
+      await pause(rnd(500, 2000), rnd(2000, 5000));
+    }
+  }
+
+  // ─── השהיה לפני דף היעד ──────────────────────────────────────────────────
+  // Mode A (ישר): השהיה קצרה יותר
+  // Modes B/C (אחרי גלישה): השהיה "חשיבה" אקראית
+  const thinkMs = numStops === 0
+    ? rnd(500, 2500)            // Mode A: 0.5–2.5s
+    : rnd(2000, 7000);          // Modes B/C: 2–7s
+  log(`  💭 Pause ${Math.round(thinkMs / 1000)}s → target page`);
+  await pause(thinkMs, thinkMs + rnd(0, 2000));
+
+  // ─── נווט לדף היעד ───────────────────────────────────────────────────────
   log(`  🎯 → ${targetUrl}`);
   await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(async (e: any) => {
     log(`  ⚠️ Navigation failed: ${e.message} — retrying`);
-    await pause(2500, 4000);
+    await pause(2000, 4000);
     await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch(() => {});
   });
   await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
 
-  // פעולות ראשונות בדף היעד — כאילו "הגעתי ומסתכל"
-  await pause(rnd(1500, 3500), rnd(3500, 6000));
-  await moveMouse(page);
-  await humanScroll(page, 'down', rnd(80, 200));
-  await pause(800, 2000);
+  // ─── הגעה לדף היעד — הופעה טבעית ────────────────────────────────────────
+  // "מסתכל על הדף" — השהיה + עכבר + גלילה קצרה
+  await pause(rnd(1500, 4000), rnd(4000, 7000));
+  await mouseSession(page, 1, 3);
+  await humanScroll(page, 'down', rnd(60, 200));
+  await pause(rnd(600, 2000), rnd(2000, 4500));
 }
 
 // ─── Single tab enforcement ───────────────────────────────────────────────────
