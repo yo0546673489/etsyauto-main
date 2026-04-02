@@ -128,7 +128,7 @@ function OrdersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
-  const { selectedShopId, selectedShopIds } = useShop();
+  const { selectedShopId, selectedShopIds, shops } = useShop();
   const { user } = useAuth();
   const { t } = useLanguage();
 
@@ -374,7 +374,7 @@ function OrdersContent() {
                     />
                   </th>
                   <th className="py-3.5 px-5 text-xs font-semibold text-gray-400 tracking-wide">מספר הזמנה</th>
-                  <th className="py-3.5 px-5 text-xs font-semibold text-gray-400 tracking-wide">לקוח</th>
+                  <th className="py-3.5 px-5 text-xs font-semibold text-gray-400 tracking-wide">חנות</th>
                   <th className="py-3.5 px-5 text-xs font-semibold text-gray-400 tracking-wide">תאריך</th>
                   <th className="py-3.5 px-5 text-xs font-semibold text-gray-400 tracking-wide">סכום</th>
                   <th className="py-3.5 px-5 text-xs font-semibold text-gray-400 tracking-wide">מעקב</th>
@@ -407,15 +407,11 @@ function OrdersContent() {
                       </div>
                     </td>
 
-                    {/* לקוח */}
+                    {/* חנות */}
                     <td className="py-4 px-5">
-                      <div className="flex items-center gap-3">
-                        <CustomerAvatar name={order.buyer_name} />
-                        <div>
-                          <p className="font-semibold text-gray-800 text-sm">{order.buyer_name}</p>
-                          <p className="text-xs text-gray-400">{order.buyer_email}</p>
-                        </div>
-                      </div>
+                      <span className="font-semibold text-gray-800 text-sm">
+                        {shops.find(s => s.id === order.shop_id)?.display_name || '—'}
+                      </span>
                     </td>
 
                     {/* תאריך */}
