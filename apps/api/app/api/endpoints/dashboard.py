@@ -225,9 +225,9 @@ async def get_dashboard_stats(
             )
             available_for_payout = payout_data.get("available_for_payout", 0) / 100
             payout_currency = payout_data.get("currency", "ILS")
-            # Use same value for deposit when Etsy API didn't return it
-            if available_for_deposit is None and available_for_payout > 0:
-                available_for_deposit = available_for_payout
+            # available_for_deposit stays None — do NOT copy payout amount.
+            # Etsy's "available for deposit" is a separate field; if the API
+            # didn't return it, we have no reliable data and should show —.
         except Exception:
             available_for_payout = 0
             payout_currency = "ILS"
