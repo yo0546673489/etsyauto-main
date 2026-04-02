@@ -323,62 +323,64 @@ class FinancialService:
         ) or 0
 
         # ── available_for_deposit calculation ──────────────────────────
-        # Logic mirrors Etsy's deposit scheduling:
-        # 1. If the shop has DISBURSE2 history → detect deposit frequency,
-        #    compute next deposit date. If we're within 3 days of it, compute
-        #    available = balance − payments still in the 3-day clearing window.
-        #    Otherwise the next deposit isn't scheduled yet → available = 0.
-        # 2. If no DISBURSE2 history (new shop) → always use balance −
-        #    3-day clearing heuristic (Etsy prepares first deposit soon).
+        # Algorithm:
+        #   1. Detect clearing period by measuring how long payments sit before
+        #      a DISBURSE2 (bank deposit) follows them. We pair each PAYMENT_GROSS
+        #      with the next DISBURSE2 and record the gap. The MAX observed gap
+        #      is our clearing_period_days (conservative — avoids over-reporting).
+        #   2. available = max(0, balance − sum of PAYMENT_GROSS newer than
+        #      clearing_period_days).  Payments still in that window are frozen;
+        #      everything older has cleared and is ready for the next deposit.
+        #   3. If there is no DISBURSE2 history (brand-new shop) we default to
+        #      14 days (Etsy's standard clearing window for new accounts).
         now = datetime.now(timezone.utc)
-        disburse_dates = (
+        look_back = now - timedelta(days=120)
+
+        # Fetch recent PAYMENT_GROSS entries (sorted ascending so we can scan)
+        payment_rows = (
+            self.db.query(LedgerEntry.entry_created_at, LedgerEntry.amount)
+            .filter(and_(*filters))
+            .filter(LedgerEntry.entry_type == "PAYMENT_GROSS")
+            .filter(LedgerEntry.entry_created_at >= look_back)
+            .order_by(LedgerEntry.entry_created_at.asc())
+            .all()
+        )
+
+        # Fetch DISBURSE2 entries (sorted ascending)
+        disburse_rows = (
             self.db.query(LedgerEntry.entry_created_at)
             .filter(and_(*filters))
             .filter(LedgerEntry.entry_type.in_(["DISBURSE2", "DISBURSE"]))
-            .order_by(LedgerEntry.entry_created_at.desc())
-            .limit(10)
+            .filter(LedgerEntry.entry_created_at >= look_back)
+            .order_by(LedgerEntry.entry_created_at.asc())
             .all()
         )
-        disburse_dates = [r[0] for r in disburse_dates]
+        disburse_dates = [r[0] for r in disburse_rows]
 
-        def _pending_credits(base_filters):
-            cutoff = now - timedelta(days=3)
-            f = list(base_filters) + [
-                LedgerEntry.entry_type == "PAYMENT_GROSS",
-                LedgerEntry.entry_created_at >= cutoff,
-            ]
-            return (
-                self.db.query(func.coalesce(func.sum(LedgerEntry.amount), 0))
-                .filter(and_(*f))
-                .scalar()
-            ) or 0
+        # Detect clearing period: for each payment, find the next DISBURSE2
+        clearing_gaps = []
+        for payment_date, _ in payment_rows:
+            next_d = next((d for d in disburse_dates if d > payment_date), None)
+            if next_d:
+                gap = (next_d - payment_date).days
+                if 1 <= gap <= 45:  # sanity: Etsy clearing is 1-45 days
+                    clearing_gaps.append(gap)
 
-        if disburse_dates:
-            last_disburse = disburse_dates[0]
-            # Detect interval: average gap between last few disbursements
-            if len(disburse_dates) >= 2:
-                gaps = [
-                    (disburse_dates[i] - disburse_dates[i + 1]).days
-                    for i in range(min(4, len(disburse_dates) - 1))
-                ]
-                avg_interval_days = round(sum(gaps) / len(gaps))
-            else:
-                avg_interval_days = 30  # default: monthly
-
-            # Advance next_deposit until it's in the future
-            next_deposit = last_disburse + timedelta(days=avg_interval_days)
-            while next_deposit < now:
-                next_deposit += timedelta(days=avg_interval_days)
-
-            # Within 3-day window of next deposit → funds are being prepared
-            if now >= next_deposit - timedelta(days=3):
-                available_for_deposit = max(0, current_balance - _pending_credits(filters))
-            else:
-                available_for_deposit = 0
+        if clearing_gaps:
+            # Use the maximum observed gap so we never over-report
+            clearing_period_days = max(clearing_gaps)
         else:
-            # No deposit history → cannot predict next deposit date → show $0
-            # (safer than showing a wrong estimate for monthly depositors)
-            available_for_deposit = 0
+            # No DISBURSE2 history yet → use Etsy's default clearing window
+            clearing_period_days = 14
+
+        # Sum payments still inside the clearing window
+        clearing_cutoff = now - timedelta(days=clearing_period_days)
+        in_clearing = sum(
+            amount for payment_date, amount in payment_rows
+            if payment_date >= clearing_cutoff
+        )
+
+        available_for_deposit = max(0, current_balance - in_clearing)
 
         result = {
             "current_balance": current_balance,
