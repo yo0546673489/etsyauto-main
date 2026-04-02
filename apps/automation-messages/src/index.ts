@@ -54,7 +54,7 @@ async function main() {
 
   // Workers — הודעות
   const syncWorker = createSyncWorker(pool, jobQueue);
-  const initialSyncWorker = createInitialSyncWorker(pool);
+  const initialSyncWorker = createInitialSyncWorker(pool, jobQueue);
   const replyWorker = createReplyWorker(pool, jobQueue);
 
   // Workers — ביקורות + הנחות

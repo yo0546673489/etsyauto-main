@@ -38,10 +38,16 @@ export class EtsyScraper {
    * Check if the profile is currently logged into Etsy.
    * Navigates to etsy.com and checks for user session indicators.
    */
-  async checkEtsyLogin(): Promise<boolean> {
+  /**
+   * בדיקת התחברות ל-Etsy.
+   * @param withWarmUp true רק בסריקה ידנית של כל החנויות — גולש בעמודים לפני כניסה להודעות.
+   *                   false (ברירת מחדל) בסנכרון רגיל שמופעל ע"י אימייל — נכנס ישר.
+   */
+  async checkEtsyLogin(withWarmUp = false): Promise<boolean> {
     try {
-      // ── חימום: גלישה אנושית ב-2-4 עמודי Etsy לפני ההודעות ──────────────
-      await this.human.warmUpBrowsing();
+      if (withWarmUp) {
+        await this.human.warmUpBrowsing();
+      }
 
       await this.page.goto('https://www.etsy.com/messages', { waitUntil: 'domcontentloaded', timeout: 20000 });
       await randomDelay(2000, 3000);
