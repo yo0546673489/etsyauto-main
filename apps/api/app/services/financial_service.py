@@ -322,27 +322,11 @@ class FinancialService:
             .scalar()
         ) or 0
 
-        # Compute available_for_deposit:
-        # Etsy holds PAYMENT_GROSS entries for ~3 days (clearing period) before
-        # they become available for deposit. Subtract recent (< 3 days old) gross
-        # payment credits from the balance to approximate the available amount.
-        clearing_cutoff = datetime.now(timezone.utc) - timedelta(days=3)
-        pending_credits_filters = filters + [
-            LedgerEntry.entry_type == "PAYMENT_GROSS",
-            LedgerEntry.entry_created_at >= clearing_cutoff,
-        ]
-        pending_credits = (
-            self.db.query(func.coalesce(func.sum(LedgerEntry.amount), 0))
-            .filter(and_(*pending_credits_filters))
-            .scalar()
-        ) or 0
-        available_for_deposit = max(0, current_balance - pending_credits)
-
         result = {
             "current_balance": current_balance,
             "reserve_held": abs(reserve_total),
             "available_for_payout": current_balance - abs(reserve_total),
-            "available_for_deposit": available_for_deposit,
+            "available_for_deposit": current_balance,
             "currency": currency,
             "recent_payouts": [
                 {"amount": abs(p[0]), "date": p[1].isoformat() if p[1] else None}
