@@ -66,6 +66,7 @@ services:
       # Security
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       ADMIN_PORTAL_SECRET: ${ADMIN_PORTAL_SECRET:-}
+      CONTROL_PANEL_SECRET: ${CONTROL_PANEL_SECRET:-}
       # Email Configuration
       SMTP_HOST: ${SMTP_HOST}
       SMTP_PORT: ${SMTP_PORT}
