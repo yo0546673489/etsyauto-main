@@ -35,7 +35,8 @@ export function ShopProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsLoading(true);
       const data = await shopsApi.getAll();
-      setShops(data ?? []);
+      const connectedOnly = (data ?? []).filter(s => s.status === 'connected');
+      setShops(connectedOnly);
 
       // Restore from localStorage (multi-store takes priority)
       const storedMulti = window.localStorage.getItem(MULTI_STORAGE_KEY);
