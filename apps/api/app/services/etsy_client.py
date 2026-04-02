@@ -598,6 +598,10 @@ class EtsyClient:
                 "GET",
                 f"/application/shops/{etsy_shop_id}/payment-account",
             )
+            import logging as _log
+            _log.getLogger(__name__).warning(
+                f"[PAYMENT_ACCOUNT_RAW] shop={etsy_shop_id} type={type(data).__name__} keys={list(data.keys()) if isinstance(data, dict) else 'N/A'} data={str(data)[:500]}"
+            )
             if isinstance(data, dict) and "results" in data:
                 results = data.get("results", [])
                 return results[0] if results else None
