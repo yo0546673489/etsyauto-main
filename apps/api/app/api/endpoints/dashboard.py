@@ -223,11 +223,13 @@ async def get_dashboard_stats(
                 tenant_id=context.tenant_id,
                 shop_ids=parsed_shop_ids if parsed_shop_ids else None,
             )
-            available_for_payout = payout_data.get("available_for_payout", 0) / 100
+            # current_balance = SUM(all ledger amounts) = true account balance
+            available_for_payout = payout_data.get("current_balance", 0) / 100
             payout_currency = payout_data.get("currency", "ILS")
-            # available_for_deposit stays None — do NOT copy payout amount.
-            # Etsy's "available for deposit" is a separate field; if the API
-            # didn't return it, we have no reliable data and should show —.
+            # available_for_payout from service = current_balance - reserve_held
+            # This is the best approximation for "available for deposit" when
+            # Etsy's payment-account API endpoint is unavailable (returns 404).
+            available_for_deposit = payout_data.get("available_for_payout", 0) / 100
         except Exception:
             available_for_payout = 0
             payout_currency = "ILS"
