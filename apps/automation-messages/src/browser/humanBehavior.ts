@@ -156,6 +156,89 @@ export class HumanBehavior {
     }
   }
 
+  /**
+   * חימום לפני כניסה לדף ההודעות — מבקר ב-2-4 עמודים אקראיים ב-Etsy
+   * כדי שהפרופיל ייראה כמו גולש אנושי רגיל ולא רובוט שקופץ ישר להודעות.
+   * כל ביקור: גלילה, עכבר, השהיות — הכל אקראי ושונה בכל פעם.
+   */
+  async warmUpBrowsing(): Promise<void> {
+    const WARM_UP_PAGES = [
+      // דף הבית
+      'https://www.etsy.com',
+      // קטגוריות
+      'https://www.etsy.com/c/jewelry',
+      'https://www.etsy.com/c/clothing',
+      'https://www.etsy.com/c/home-and-living',
+      'https://www.etsy.com/c/art-and-collectibles',
+      'https://www.etsy.com/c/toys-and-games',
+      'https://www.etsy.com/c/bags-and-purses',
+      'https://www.etsy.com/c/shoes',
+      'https://www.etsy.com/c/weddings',
+      // חיפושים גנריים
+      'https://www.etsy.com/search?q=handmade+gift',
+      'https://www.etsy.com/search?q=personalized+jewelry',
+      'https://www.etsy.com/search?q=home+decor',
+      'https://www.etsy.com/search?q=wedding+gift',
+      'https://www.etsy.com/search?q=birthday+gift',
+      'https://www.etsy.com/search?q=wall+art',
+      'https://www.etsy.com/search?q=vintage+clothing',
+      // עמודים מיוחדים
+      'https://www.etsy.com/trending',
+    ];
+
+    // בחר 2-4 עמודים אקראיים — שונים בכל פעם
+    const numPages = randomBetween(2, 4);
+    const shuffled = [...WARM_UP_PAGES].sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, numPages);
+
+    logger.info(`[HumanBehavior] 🌐 חימום: גולש ב-${numPages} עמודים לפני הודעות`);
+
+    for (let i = 0; i < selected.length; i++) {
+      const url = selected[i];
+      logger.debug(`[HumanBehavior] חימום עמוד ${i + 1}/${numPages}: ${url}`);
+
+      // ניווט אנושי לעמוד
+      await this.humanNavigate(url);
+
+      // גלילה ראשונית למטה — כאילו סוקרים את הדף
+      await this.humanScroll('down', randomBetween(250, 600));
+      await randomDelay(1500, 4000);
+
+      // לפעמים גוללים עוד קצת
+      if (Math.random() < 0.5) {
+        await this.humanScroll('down', randomBetween(100, 350));
+        await randomDelay(800, 2500);
+      }
+
+      // לפעמים גוללים חזרה למעלה (40% מהמקרים)
+      if (Math.random() < 0.4) {
+        await this.humanScroll('up', randomBetween(100, 300));
+        await randomDelay(600, 1800);
+      }
+
+      // תנועת עכבר אקראית
+      await this.randomMouseMovement();
+
+      // "קריאת" הדף — השהיה לפי גודל אקראי
+      await this.readingDelay(randomBetween(300, 800));
+
+      // השהייה בין עמודים (לא אחידה — לפעמים מהירה, לפעמים איטית)
+      const pauseType = Math.random();
+      if (pauseType < 0.2) {
+        // מעבר מהיר — רק הציצו
+        await randomDelay(800, 1800);
+      } else if (pauseType < 0.7) {
+        // מעבר רגיל
+        await randomDelay(2000, 4500);
+      } else {
+        // עצר לקרוא — כמו בן אדם שנקלע למשהו מעניין
+        await randomDelay(4000, 8000);
+      }
+    }
+
+    logger.info('[HumanBehavior] ✅ חימום הושלם — ממשיך להודעות');
+  }
+
   async enterMessagesPage(url: string): Promise<void> {
     await this.humanNavigate(url);
     await this.randomMouseMovement();

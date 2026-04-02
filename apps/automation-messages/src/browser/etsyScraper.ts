@@ -40,6 +40,9 @@ export class EtsyScraper {
    */
   async checkEtsyLogin(): Promise<boolean> {
     try {
+      // ── חימום: גלישה אנושית ב-2-4 עמודי Etsy לפני ההודעות ──────────────
+      await this.human.warmUpBrowsing();
+
       await this.page.goto('https://www.etsy.com/messages', { waitUntil: 'domcontentloaded', timeout: 20000 });
       await randomDelay(2000, 3000);
 
