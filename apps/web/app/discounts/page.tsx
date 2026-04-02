@@ -61,12 +61,19 @@ function RuleCard({ rule, onToggle, onEdit, onDelete, onTriggerRotation }: {
       ? `${rule.discount_value}% הנחה`
       : `$${rule.discount_value} הנחה`;
 
+  // תרגום שם ל-עברית
+  const hebrewName = rule.name
+    ?.replace(/shop-wide sale/gi, 'מבצע כלל-חנותי')
+    ?.replace(/sale/gi, 'מבצע')
+    ?.replace(/discount/gi, 'הנחה')
+    || rule.name;
+
   return (
     <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-2 flex-wrap">
-            <h3 className="font-semibold text-gray-800 text-base">{rule.name}</h3>
+            <h3 className="font-semibold text-gray-800 text-base">{hebrewName}</h3>
             <StatusBadge status={rule.status} />
             {rule.auto_rotate ? (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
@@ -81,7 +88,7 @@ function RuleCard({ rule, onToggle, onEdit, onDelete, onTriggerRotation }: {
             )}
           </div>
           <p className="text-sm text-gray-600 mb-1">{valueLabel} • {scopeLabel}</p>
-          {!rule.auto_rotate && rule.is_scheduled && rule.start_date && (
+          {!rule.auto_rotate && rule.start_date && (
             <p className="text-xs text-gray-400">
               תזמון: {new Date(rule.start_date).toLocaleDateString('he-IL')}
               {rule.end_date ? ` – ${new Date(rule.end_date).toLocaleDateString('he-IL')}` : ''}
@@ -93,7 +100,7 @@ function RuleCard({ rule, onToggle, onEdit, onDelete, onTriggerRotation }: {
             </p>
           )}
           {rule.etsy_sale_name && (
-            <p className="text-xs text-gray-400 mt-0.5">שם ב-Etsy: {rule.etsy_sale_name}</p>
+            <p className="text-xs text-gray-400 mt-0.5">שם ב-Etsy: {rule.etsy_sale_name.replace(/shop-wide sale/gi, 'מבצע כלל-חנותי').replace(/sale/gi, 'מבצע')}</p>
           )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -414,8 +421,13 @@ const TABS = [
   { key: 'history',   label: 'היסטוריית ביצועים' },
 ];
 
+function shopSortKey(name: string) {
+  const m = name.match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
 export default function DiscountsPage() {
-  const { shops, selectedShop } = useShop();
+  const { shops, selectedShop, selectedShops } = useShop();
   const { showToast } = useToast();
 
   const [tab, setTab] = useState('all');
@@ -427,6 +439,10 @@ export default function DiscountsPage() {
   const [editingRule, setEditingRule] = useState<DiscountRule | undefined>();
 
   const shopId = selectedShop?.id;
+
+  // חנויות נבחרות, ממוינות לפי מספר
+  const visibleShops = [...(selectedShops.length > 0 ? selectedShops : shops)]
+    .sort((a, b) => shopSortKey(a.display_name) - shopSortKey(b.display_name));
 
   const loadData = useCallback(async () => {
     if (!shops.length) { setLoading(false); return; }
@@ -645,12 +661,12 @@ export default function DiscountsPage() {
         ) : (
           /* Rules list — grouped by shop */
           <div className="space-y-6">
-            {shops.length === 0 ? (
+            {visibleShops.length === 0 ? (
               <div className="bg-white rounded-xl p-12 text-center shadow-sm border border-gray-100">
                 <Tag className="w-12 h-12 text-gray-200 mx-auto mb-3" />
-                <p className="text-gray-400 text-sm">אין חנויות מחוברות</p>
+                <p className="text-gray-400 text-sm">בחר חנות כדי לראות הנחות</p>
               </div>
-            ) : shops.map(shop => {
+            ) : visibleShops.map(shop => {
               const shopRules = (rulesByShop[shop.id] || []).filter(r =>
                 tab === 'all' ? true : r.status === tab
               );
