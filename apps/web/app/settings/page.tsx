@@ -202,7 +202,18 @@ function SettingsContent() {
   }, [tabParam]);
 
   const loadShops = async () => {
-    try { setIsLoading(true); setError(null); const data = await shopsApi.getAll(); setShops(Array.isArray(data) ? data : []); }
+    try {
+      setIsLoading(true); setError(null);
+      const data = await shopsApi.getAll();
+      const connected = (Array.isArray(data) ? data : [])
+        .filter(s => s.status === 'connected')
+        .sort((a, b) => {
+          const na = parseInt(a.display_name?.match(/\d+/)?.[0] ?? '0');
+          const nb = parseInt(b.display_name?.match(/\d+/)?.[0] ?? '0');
+          return na !== nb ? na - nb : (a.display_name ?? '').localeCompare(b.display_name ?? '');
+        });
+      setShops(connected);
+    }
     catch (err) { setError((err as ApiError).detail || t('settings.loadShopsFailed')); setShops([]); }
     finally { setIsLoading(false); }
   };
