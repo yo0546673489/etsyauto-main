@@ -8,7 +8,7 @@ export function DisconnectedShopBanner() {
   const { selectedShops } = useShop();
   const { t } = useLanguage();
 
-  const disconnectedShops = selectedShops.filter((s) => s.status === 'revoked');
+  const disconnectedShops = selectedShops.filter((s) => s.status === 'revoked' && s.etsy_shop_id);
 
   if (disconnectedShops.length === 0) return null;
 
