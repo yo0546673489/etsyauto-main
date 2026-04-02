@@ -376,8 +376,9 @@ class FinancialService:
             else:
                 available_for_deposit = 0
         else:
-            # New shop — no deposit history; use 3-day clearing heuristic
-            available_for_deposit = max(0, current_balance - _pending_credits(filters))
+            # No deposit history → cannot predict next deposit date → show $0
+            # (safer than showing a wrong estimate for monthly depositors)
+            available_for_deposit = 0
 
         result = {
             "current_balance": current_balance,
