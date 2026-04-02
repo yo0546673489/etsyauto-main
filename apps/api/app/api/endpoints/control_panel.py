@@ -32,7 +32,7 @@ def verify_cp_session(
     cp_session: str | None = Cookie(None, alias="cp_session"),
 ):
     secret = getattr(settings, "CONTROL_PANEL_SECRET", "")
-    if not secret or len(secret) < 16:
+    if not secret or len(secret) < 4:
         raise HTTPException(status_code=503, detail="Control Panel not configured")
     if not cp_session:
         raise HTTPException(status_code=401, detail="Not authenticated")
@@ -47,7 +47,7 @@ class LoginBody(BaseModel):
 @router.post("/auth/login")
 async def cp_login(body: LoginBody):
     secret = getattr(settings, "CONTROL_PANEL_SECRET", "")
-    if not secret or len(secret) < 16:
+    if not secret or len(secret) < 4:
         raise HTTPException(status_code=503, detail="Control Panel not configured")
     if not hmac.compare_digest(body.password.encode(), secret.encode()):
         raise HTTPException(status_code=401, detail="Invalid password")
