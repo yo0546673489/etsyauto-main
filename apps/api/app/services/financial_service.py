@@ -424,14 +424,27 @@ class FinancialService:
 
             # Daily / weekly schedule:
             # "Available for deposit" = net income accumulated since the last bank transfer.
-            # The DISBURSE2 already swept what was available; residual left behind is still
-            # in clearing. New income/fees since the deposit = what will be deposited next.
             current_cycle = (
                 self.db.query(func.coalesce(func.sum(LedgerEntry.amount), 0))
                 .filter(and_(*shop_filter))
                 .filter(LedgerEntry.entry_created_at > last_deposit_dt)
                 .scalar()
             ) or 0
+
+            # Edge case: current_cycle is negative (e.g. a large refund hit after the deposit)
+            # but the overall balance is still positive because Etsy ran a RECOUP to collect
+            # the debt from the next sale. In that case the remaining balance is available.
+            if current_cycle < 0 and shop_balance > 0:
+                has_recoup = (
+                    self.db.query(LedgerEntry.id)
+                    .filter(and_(*shop_filter))
+                    .filter(LedgerEntry.entry_created_at > last_deposit_dt)
+                    .filter(LedgerEntry.entry_type.in_(["RECOUP", "recoup"]))
+                    .first()
+                )
+                if has_recoup:
+                    return max(0, shop_balance)
+
             return max(0, current_cycle)
 
         # Determine which shops to iterate over
