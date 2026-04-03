@@ -363,13 +363,28 @@ class FinancialService:
                 .scalar()
             ) or 0
 
-            # If the last deposit was very old (60+ days), all accumulated funds have
-            # long since cleared — return full balance as available.
-            if days_since_deposit > 60:
+            # Determine deposit schedule: check gap between last two deposits.
+            # ≤ 21 days gap  → daily / weekly schedule  → funds clear fast → full balance available
+            # > 21 days gap  → monthly schedule          → current-cycle approach
+            is_monthly = False
+            second_deposit_row = (
+                self.db.query(LedgerEntry.entry_created_at)
+                .filter(and_(*shop_filter))
+                .filter(LedgerEntry.entry_type.in_(["DISBURSE2", "DISBURSE"]))
+                .order_by(LedgerEntry.entry_created_at.desc())
+                .offset(1)
+                .first()
+            )
+            if second_deposit_row:
+                inter_gap = (last_deposit_dt - second_deposit_row[0]).days
+                is_monthly = inter_gap > 21
+            # If only one deposit on record: default non-monthly (conservative = show more)
+
+            if not is_monthly or days_since_deposit > 60:
+                # Daily/weekly (or very stale deposit): all balance is cleared & available
                 return max(0, shop_balance)
 
-            # Current payout cycle: all entries since the last deposit
-            # These have not been sent to the bank yet → still in clearing
+            # Monthly schedule: everything since last deposit is in the current payout cycle
             current_cycle = (
                 self.db.query(func.coalesce(func.sum(LedgerEntry.amount), 0))
                 .filter(and_(*shop_filter))
