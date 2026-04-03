@@ -354,6 +354,7 @@ class FinancialService:
                 return 0
 
             last_deposit_dt = last_deposit_row[0]
+            days_since_deposit = (now - last_deposit_dt).days
 
             # Total account balance (all entries ever)
             shop_balance = (
@@ -361,6 +362,11 @@ class FinancialService:
                 .filter(and_(*shop_filter))
                 .scalar()
             ) or 0
+
+            # If the last deposit was very old (60+ days), all accumulated funds have
+            # long since cleared — return full balance as available.
+            if days_since_deposit > 60:
+                return max(0, shop_balance)
 
             # Current payout cycle: all entries since the last deposit
             # These have not been sent to the bank yet → still in clearing

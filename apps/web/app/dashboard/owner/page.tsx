@@ -161,7 +161,8 @@ function OwnerDashboardContent() {
   const payoutAmount      = convertedPayoutAmount !== null ? convertedPayoutAmount : payoutAmountRaw;
   const depositAmountRaw  = stats.available_for_deposit;
   const depositAmount     = stats.display_deposit_amount ?? depositAmountRaw;  // prefer converted
-  const monthlyNetProfit  = stats.monthly_net_profit ?? null;
+  const monthlyNetProfitRaw = stats.monthly_net_profit ?? null;
+  const monthlyNetProfit  = stats.display_monthly_net_profit ?? monthlyNetProfitRaw;
   const payoutLabel       = stats.payout_label || 'יתרה נוכחית';
   const totalOrders       = stats.total_orders || 0;
   const totalViews        = stats.total_views || 0;

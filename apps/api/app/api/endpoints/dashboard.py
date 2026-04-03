@@ -251,6 +251,7 @@ async def get_dashboard_stats(
     # ── Currency conversion for display ────────────────────────────────
     display_amount = None
     display_deposit_amount = None
+    display_monthly_net_profit = None
     display_currency_out = None
     if display_currency:
         target_ccy = display_currency.upper().strip()
@@ -267,6 +268,10 @@ async def get_dashboard_stats(
                     dep_cents = int(round(available_for_deposit * 100))
                     conv_dep, _, _, _ = convert_amount(dep_cents, payout_currency, target_ccy, db=db)
                     display_deposit_amount = conv_dep / 100
+                if monthly_net_profit is not None:
+                    mnp_cents = int(round(monthly_net_profit * 100))
+                    conv_mnp, _, _, _ = convert_amount(mnp_cents, payout_currency, target_ccy, db=db)
+                    display_monthly_net_profit = conv_mnp / 100
             except Exception:
                 pass
 
@@ -282,6 +287,7 @@ async def get_dashboard_stats(
         "available_for_payout": available_for_payout,
         "available_for_deposit": available_for_deposit,
         "monthly_net_profit": monthly_net_profit,
+        "display_monthly_net_profit": display_monthly_net_profit,
         "payout_currency": payout_currency,
         "payout_label": payout_label,
         "display_amount": display_amount,
