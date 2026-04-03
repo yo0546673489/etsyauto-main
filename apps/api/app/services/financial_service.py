@@ -378,6 +378,10 @@ class FinancialService:
             if second_deposit_row:
                 inter_gap = (last_deposit_dt - second_deposit_row[0]).days
                 is_monthly = inter_gap > 21
+                # Even if gap looked daily/weekly, check if deposit is overdue by >7 days.
+                # E.g. two deposits 3 days apart but 11 days since last → not really daily.
+                if not is_monthly and (days_since_deposit - inter_gap) > 7:
+                    is_monthly = True
             else:
                 # Only one deposit on record: estimate from how long payments accumulated
                 # before that deposit.  Long accumulation (> 21 days) → monthly schedule.
@@ -396,17 +400,9 @@ class FinancialService:
                 # Daily/weekly (or very stale deposit): all balance is cleared & available
                 return max(0, shop_balance)
 
-            # Monthly schedule: everything since last deposit is in the current payout cycle
-            current_cycle = (
-                self.db.query(func.coalesce(func.sum(LedgerEntry.amount), 0))
-                .filter(and_(*shop_filter))
-                .filter(LedgerEntry.entry_created_at > last_deposit_dt)
-                .scalar()
-            ) or 0
-
-            # available = balance minus only the POSITIVE part of current cycle
-            # (new income in clearing).  Fees/charges don't inflate available above balance.
-            return max(0, shop_balance - max(0, current_cycle))
+            # Monthly schedule: nothing is available until the next monthly deposit date.
+            # Etsy holds ALL funds (including pre-deposit residual) until next payout.
+            return 0
 
         # Determine which shops to iterate over
         all_shop_ids: List[int] = []
