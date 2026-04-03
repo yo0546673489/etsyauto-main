@@ -475,7 +475,8 @@ async def _sync_shop_ledger(
     WINDOW_SECONDS = 30 * 24 * 3600  # 30 days
     now_ts = int(datetime.now(timezone.utc).timestamp())
     if min_created is None:
-        min_created = int((datetime.now(timezone.utc) - timedelta(days=365)).timestamp())
+        # Full sync: go back 5 years to capture all historical data
+        min_created = int((datetime.now(timezone.utc) - timedelta(days=365 * 5)).timestamp())
     range_end = now_ts
 
     created = updated = 0

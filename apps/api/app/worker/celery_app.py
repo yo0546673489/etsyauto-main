@@ -78,7 +78,10 @@ celery_app.conf.beat_schedule = {
         "task": "app.worker.tasks.order_tasks.reconcile_orders",
         "schedule": 3600.0,  # Every hour
     },
-    # Products, ledger, and payment details are synced on user login — not on a schedule
+    "sync-ledger-entries-hourly": {
+        "task": "app.worker.tasks.financial_tasks.sync_ledger_entries",
+        "schedule": 3600.0,  # Every hour — incremental, picks up new entries
+    },
     "fetch-daily-exchange-rates": {
         "task": "app.worker.tasks.exchange_rate_tasks.fetch_daily_exchange_rates",
         "schedule": 86400.0,  # Every 24 hours (daily)

@@ -361,11 +361,11 @@ async def etsy_oauth_callback(
     sync_orders.delay(shop_id=shop.id, tenant_id=tenant_id)
     logger.info("Triggered product and order sync for shop_id=%s after OAuth connect/reconnect", shop.id)
 
-    # Trigger financial sync so data is pulled after connect/reconnect
+    # Trigger financial sync — full historical sync on connect/reconnect
     sync_ledger_entries.delay(
         shop_id=shop.id,
         tenant_id=tenant_id,
-        force_full_sync=False,
+        force_full_sync=True,
     )
     sync_payment_details.delay(shop_id=shop.id, tenant_id=tenant_id)
 
