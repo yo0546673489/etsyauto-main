@@ -41,7 +41,7 @@ export default function MsgConversationItem({ conv, isSelected, onClick }: Props
       >
         {/* Avatar */}
         <div className="relative flex-shrink-0">
-          <MsgAvatar name={displayName} size="md" />
+          <MsgAvatar name={displayName} size="md" id={conv.id} />
           {isNew && (
             <span className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#006d43] border-2 border-white" />
           )}

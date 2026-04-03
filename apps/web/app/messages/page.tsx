@@ -283,7 +283,7 @@ export default function MessagesPage() {
                 <button onClick={() => setShowMobileChat(false)} className="md:hidden p-1 rounded hover:bg-gray-100">
                   <ChevronLeft className="w-5 h-5 text-gray-400" />
                 </button>
-                <MsgAvatar name={selectedConv.customer_name} size="md" />
+                <MsgAvatar name={selectedConv.customer_name} size="md" id={selectedConv.id} />
                 <div className="flex-1 min-w-0 text-right">
                   <h2 className="font-bold text-gray-800 text-sm">{selectedConv.customer_name}</h2>
                   <p className="text-xs text-gray-400">
