@@ -384,11 +384,16 @@ class FinancialService:
                     .scalar()
                 ) or 0
 
-            # Payments still in clearing window
+            # Net amount still in clearing window — sum ALL entry types (not just
+            # PAYMENT_GROSS, which is gross before fees).  shop_balance is net,
+            # so we must compare against net-in-clearing to avoid over-subtracting.
             clearing_cutoff = now - timedelta(days=clearing_period_days)
-            in_clearing = sum(
-                amt for dt, amt in payment_rows if dt >= clearing_cutoff
-            )
+            in_clearing = (
+                self.db.query(func.coalesce(func.sum(LedgerEntry.amount), 0))
+                .filter(and_(*shop_filter))
+                .filter(LedgerEntry.entry_created_at >= clearing_cutoff)
+                .scalar()
+            ) or 0
 
             return max(0, shop_balance - in_clearing)
 
