@@ -380,7 +380,7 @@ class FinancialService:
                 is_monthly = inter_gap > 21
                 # Even if gap looked daily/weekly, check if deposit is overdue by >7 days.
                 # E.g. two deposits 3 days apart but 11 days since last → not really daily.
-                if not is_monthly and (days_since_deposit - inter_gap) > 7:
+                if not is_monthly and (days_since_deposit - inter_gap) >= 7:
                     is_monthly = True
             else:
                 # Only one deposit on record: estimate from how long payments accumulated
