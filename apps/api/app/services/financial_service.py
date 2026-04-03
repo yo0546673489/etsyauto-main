@@ -323,79 +323,55 @@ class FinancialService:
         ) or 0
 
         # ── available_for_deposit calculation ──────────────────────────
-        # IMPORTANT: Must be computed PER-SHOP and then summed.
-        # Mixing DISBURSE2 from shop A with PAYMENT_GROSS from shop B produces
-        # a wrong clearing-period estimate.  We loop over each individual shop
-        # and aggregate the results.
+        # Computed PER-SHOP then summed.
+        # Logic: available = balance - sum(entries since last DISBURSE2/DISBURSE).
+        # Everything after the last deposit is in the current payout cycle → not yet available.
         now = datetime.now(timezone.utc)
-        look_back = now - timedelta(days=120)
 
         def _available_for_one_shop(tid: int, sid: int) -> int:
-            """Compute available_for_deposit (cents) for a single shop."""
+            """Compute available_for_deposit (cents) for a single shop.
+
+            Logic: everything that arrived SINCE the last bank deposit (DISBURSE2/DISBURSE)
+            is still in the current payout cycle and not yet available.
+            available = balance - sum(entries since last deposit)
+            """
             shop_filter = [
                 LedgerEntry.tenant_id == tid,
                 LedgerEntry.shop_id == sid,
             ]
 
-            payment_rows = (
-                self.db.query(LedgerEntry.entry_created_at, LedgerEntry.amount)
+            # Find the most recent deposit date (DISBURSE2 or DISBURSE)
+            last_deposit_row = (
+                self.db.query(LedgerEntry.entry_created_at)
                 .filter(and_(*shop_filter))
-                .filter(LedgerEntry.entry_type == "PAYMENT_GROSS")
-                .filter(LedgerEntry.entry_created_at >= look_back)
-                .order_by(LedgerEntry.entry_created_at.asc())
-                .all()
-            )
-
-            disburse_dates = [
-                r[0] for r in (
-                    self.db.query(LedgerEntry.entry_created_at)
-                    .filter(and_(*shop_filter))
-                    .filter(LedgerEntry.entry_type.in_(["DISBURSE2", "DISBURSE"]))
-                    .filter(LedgerEntry.entry_created_at >= look_back)
-                    .order_by(LedgerEntry.entry_created_at.asc())
-                    .all()
-                )
-            ]
-
-            # Detect clearing period from PAYMENT_GROSS→DISBURSE2 gaps
-            clearing_gaps = []
-            for payment_date, _ in payment_rows:
-                next_d = next((d for d in disburse_dates if d > payment_date), None)
-                if next_d:
-                    gap = (next_d - payment_date).days
-                    if 1 <= gap <= 45:
-                        clearing_gaps.append(gap)
-
-            clearing_period_days = max(clearing_gaps) if clearing_gaps else 14
-
-            # Balance for this shop — prefer ShopFinancialState (from Etsy API, exact)
-            # over ledger SUM (may be incomplete if full history was never synced)
-            state = (
-                self.db.query(ShopFinancialState)
-                .filter(ShopFinancialState.shop_id == sid)
+                .filter(LedgerEntry.entry_type.in_(["DISBURSE2", "DISBURSE"]))
+                .order_by(LedgerEntry.entry_created_at.desc())
                 .first()
             )
-            if state and state.balance is not None:
-                shop_balance = state.balance  # already in cents, exact Etsy value
-            else:
-                shop_balance = (
-                    self.db.query(func.coalesce(func.sum(LedgerEntry.amount), 0))
-                    .filter(and_(*shop_filter))
-                    .scalar()
-                ) or 0
 
-            # Net amount still in clearing window — sum ALL entry types (not just
-            # PAYMENT_GROSS, which is gross before fees).  shop_balance is net,
-            # so we must compare against net-in-clearing to avoid over-subtracting.
-            clearing_cutoff = now - timedelta(days=clearing_period_days)
-            in_clearing = (
+            if not last_deposit_row:
+                # No deposit history — cannot determine availability
+                return 0
+
+            last_deposit_dt = last_deposit_row[0]
+
+            # Total account balance (all entries ever)
+            shop_balance = (
                 self.db.query(func.coalesce(func.sum(LedgerEntry.amount), 0))
                 .filter(and_(*shop_filter))
-                .filter(LedgerEntry.entry_created_at >= clearing_cutoff)
                 .scalar()
             ) or 0
 
-            return max(0, shop_balance - in_clearing)
+            # Current payout cycle: all entries since the last deposit
+            # These have not been sent to the bank yet → still in clearing
+            current_cycle = (
+                self.db.query(func.coalesce(func.sum(LedgerEntry.amount), 0))
+                .filter(and_(*shop_filter))
+                .filter(LedgerEntry.entry_created_at > last_deposit_dt)
+                .scalar()
+            ) or 0
+
+            return max(0, shop_balance - current_cycle)
 
         # Determine which shops to iterate over
         all_shop_ids: List[int] = []
