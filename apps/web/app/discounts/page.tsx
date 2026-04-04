@@ -7,7 +7,7 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { discountsApi, type DiscountRule, type DiscountTask } from '@/lib/api';
 import {
   Tag, Plus, Pencil, Trash2, ToggleLeft, ToggleRight,
-  Clock, Loader2, RefreshCw, Zap,
+  Clock, Loader2, RefreshCw, Zap, Layers, PowerOff, CheckCheck,
 } from 'lucide-react';
 
 function cn(...cls: (string | boolean | undefined | null)[]) {
@@ -411,6 +411,286 @@ function DiscountModal({ initial, onClose, onSave }: {
   );
 }
 
+// ─── Bulk Action Modal ────────────────────────────────────────────────────────
+
+function BulkActionModal({ shopCount, onClose, onApplyAll, onDeactivateAll }: {
+  shopCount: number;
+  onClose: () => void;
+  onApplyAll: (data: Partial<DiscountRule>) => Promise<void>;
+  onDeactivateAll: () => Promise<void>;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [mode, setMode] = useState<'new' | 'deactivate'>('new');
+  const [name, setName] = useState('');
+  const [autoRotate, setAutoRotate] = useState(false);
+  const [autoMinPercent, setAutoMinPercent] = useState('20');
+  const [autoMaxPercent, setAutoMaxPercent] = useState('30');
+  const [autoIntervalDays, setAutoIntervalDays] = useState('2');
+  const [discountType, setDiscountType] = useState<'percentage' | 'fixed_amount'>('percentage');
+  const [discountValue, setDiscountValue] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [targetCountry, setTargetCountry] = useState('everywhere');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!name.trim()) e.name = 'שם הכלל נדרש';
+    if (autoRotate) {
+      const min = Number(autoMinPercent), max = Number(autoMaxPercent), interval = Number(autoIntervalDays);
+      if (!autoMinPercent || isNaN(min) || min < 5) e.autoMin = 'מינימום 5%';
+      if (!autoMaxPercent || isNaN(max) || max > 75) e.autoMax = 'מקסימום 75%';
+      if (min >= max) e.autoMax = 'מקסימום חייב להיות גדול ממינימום';
+      if (!autoIntervalDays || isNaN(interval) || interval < 1) e.autoInterval = 'לפחות יום אחד';
+    } else {
+      if (!discountValue || isNaN(Number(discountValue)) || Number(discountValue) <= 0) e.discountValue = 'ערך הנחה חייב להיות מספר חיובי';
+      if (discountType === 'percentage' && Number(discountValue) > 75) e.discountValue = 'מקסימום 75% ב-Etsy';
+      if (!startDate) e.startDate = 'תאריך התחלה נדרש';
+      if (!endDate) e.endDate = 'תאריך סיום נדרש';
+      if (startDate && endDate) {
+        const diff = (new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000;
+        if (diff > 30) e.endDate = 'מקסימום 30 יום (מגבלת Etsy)';
+        if (diff < 0) e.endDate = 'תאריך סיום חייב להיות אחרי ההתחלה';
+      }
+    }
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleApply = async (activate: boolean) => {
+    if (!validate()) return;
+    setSaving(true);
+    try {
+      await onApplyAll({
+        name: name.trim(),
+        discount_type: discountType,
+        discount_value: autoRotate ? Number(autoMinPercent) : Number(discountValue),
+        scope: 'entire_shop',
+        is_scheduled: !autoRotate,
+        start_date: !autoRotate ? startDate : undefined,
+        end_date: !autoRotate ? endDate : undefined,
+        target_country: targetCountry,
+        status: activate ? 'active' : 'draft',
+        is_active: activate,
+        auto_rotate: autoRotate,
+        auto_min_percent: autoRotate ? Number(autoMinPercent) : undefined,
+        auto_max_percent: autoRotate ? Number(autoMaxPercent) : undefined,
+        auto_interval_days: autoRotate ? Number(autoIntervalDays) : undefined,
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeactivate = async () => {
+    if (!confirm(`לכבות את כל ההנחות הפעילות בכל ${shopCount} החנויות?`)) return;
+    setSaving(true);
+    try { await onDeactivateAll(); } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+              <Layers className="w-5 h-5 text-[#006d43]" />
+              פעולה על כל החנויות
+            </h2>
+            <p className="text-sm text-gray-400 mt-0.5">הפעולה תחול על {shopCount} חנויות</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+        </div>
+
+        {/* Mode selector */}
+        <div className="px-6 pt-5 flex gap-3">
+          <button
+            onClick={() => setMode('new')}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold border-2 transition-colors',
+              mode === 'new'
+                ? 'border-[#006d43] bg-[#006d43] text-white'
+                : 'border-gray-200 text-gray-600 hover:border-gray-300'
+            )}
+          >
+            <Plus className="w-4 h-4" />
+            הנחה חדשה לכל החנויות
+          </button>
+          <button
+            onClick={() => setMode('deactivate')}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold border-2 transition-colors',
+              mode === 'deactivate'
+                ? 'border-red-500 bg-red-500 text-white'
+                : 'border-gray-200 text-gray-600 hover:border-red-300 hover:text-red-500'
+            )}
+          >
+            <PowerOff className="w-4 h-4" />
+            כבה כל ההנחות
+          </button>
+        </div>
+
+        {mode === 'deactivate' ? (
+          <div className="p-6 space-y-4">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-5 text-center">
+              <PowerOff className="w-10 h-10 text-red-400 mx-auto mb-3" />
+              <p className="font-semibold text-red-700 text-base">כיבוי כל ההנחות הפעילות</p>
+              <p className="text-sm text-red-500 mt-1">
+                כל כללי ההנחה הפעילים בכל {shopCount} החנויות יכובו ויישלח task לסיום המבצע ב-Etsy.
+              </p>
+            </div>
+            <div className="flex justify-between pt-2">
+              <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">ביטול</button>
+              <button
+                onClick={handleDeactivate}
+                disabled={saving}
+                className="flex items-center gap-2 px-5 py-2.5 bg-red-600 text-white rounded-lg font-semibold text-sm hover:bg-red-700 disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <PowerOff className="w-4 h-4" />}
+                כבה את כל ההנחות
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="p-6 space-y-5">
+            {/* Toggle אוטומטי/ידני */}
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+              <p className="text-sm font-semibold text-gray-700 mb-3">מצב ניהול הנחה</p>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setAutoRotate(false)}
+                  className={cn('flex-1 py-2.5 px-4 rounded-lg text-sm font-medium border-2 transition-colors',
+                    !autoRotate ? 'border-[#006d43] bg-[#006d43] text-white' : 'border-gray-200 text-gray-600 hover:border-gray-300')}>
+                  ידני
+                </button>
+                <button type="button" onClick={() => setAutoRotate(true)}
+                  className={cn('flex-1 py-2.5 px-4 rounded-lg text-sm font-medium border-2 transition-colors flex items-center justify-center gap-2',
+                    autoRotate ? 'border-purple-600 bg-purple-600 text-white' : 'border-gray-200 text-gray-600 hover:border-gray-300')}>
+                  <Zap className="w-4 h-4" /> אוטומטי
+                </button>
+              </div>
+            </div>
+
+            {/* שם */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">שם הכלל (פנימי)</label>
+              <input value={name} onChange={e => setName(e.target.value)}
+                className={cn('w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#006d43]',
+                  errors.name ? 'border-red-300' : 'border-gray-200')}
+                placeholder="לדוגמה: מבצע קיץ 2026" />
+              {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
+            </div>
+
+            {/* אוטומטי */}
+            {autoRotate && (
+              <div className="space-y-4 bg-purple-50 border border-purple-200 rounded-xl p-4">
+                <p className="text-sm font-medium text-purple-700 flex items-center gap-2">
+                  <Zap className="w-4 h-4" /> הגדרות מצב אוטומטי
+                </p>
+                <div className="flex gap-4 flex-wrap items-end">
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">הנחה מינימום (%)</label>
+                    <input type="number" min="5" max="74" value={autoMinPercent}
+                      onChange={e => setAutoMinPercent(e.target.value)}
+                      className={cn('w-24 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-400',
+                        errors.autoMin ? 'border-red-300' : 'border-gray-200')} />
+                    {errors.autoMin && <p className="text-xs text-red-500 mt-1">{errors.autoMin}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">הנחה מקסימום (%)</label>
+                    <input type="number" min="6" max="75" value={autoMaxPercent}
+                      onChange={e => setAutoMaxPercent(e.target.value)}
+                      className={cn('w-24 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-400',
+                        errors.autoMax ? 'border-red-300' : 'border-gray-200')} />
+                    {errors.autoMax && <p className="text-xs text-red-500 mt-1">{errors.autoMax}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">החלפה כל (ימים)</label>
+                    <input type="number" min="1" max="30" value={autoIntervalDays}
+                      onChange={e => setAutoIntervalDays(e.target.value)}
+                      className={cn('w-24 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-400',
+                        errors.autoInterval ? 'border-red-300' : 'border-gray-200')} />
+                    {errors.autoInterval && <p className="text-xs text-red-500 mt-1">{errors.autoInterval}</p>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ידני */}
+            {!autoRotate && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">סוג הנחה</label>
+                  <div className="flex gap-4">
+                    {(['percentage', 'fixed_amount'] as const).map(t => (
+                      <label key={t} className="flex items-center gap-2 cursor-pointer">
+                        <input type="radio" checked={discountType === t} onChange={() => setDiscountType(t)} className="accent-[#006d43]" />
+                        <span className="text-sm">{t === 'percentage' ? 'אחוזים (%)' : 'סכום קבוע ($)'}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    ערך ההנחה {discountType === 'percentage' ? '(%)' : '($)'}
+                  </label>
+                  <input type="number" min="0" max={discountType === 'percentage' ? 75 : undefined}
+                    value={discountValue} onChange={e => setDiscountValue(e.target.value)}
+                    className={cn('w-32 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#006d43]',
+                      errors.discountValue ? 'border-red-300' : 'border-gray-200')} />
+                  {errors.discountValue && <p className="text-xs text-red-500 mt-1">{errors.discountValue}</p>}
+                </div>
+                <div className="flex gap-4 flex-wrap">
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">תאריך התחלה <span className="text-red-500">*</span></label>
+                    <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)}
+                      className={cn('px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#006d43]',
+                        errors.startDate ? 'border-red-300' : 'border-gray-200')} />
+                    {errors.startDate && <p className="text-xs text-red-500 mt-1">{errors.startDate}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">תאריך סיום <span className="text-red-500">*</span></label>
+                    <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)}
+                      className={cn('px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#006d43]',
+                        errors.endDate ? 'border-red-300' : 'border-gray-200')} />
+                    {errors.endDate && <p className="text-xs text-red-500 mt-1">{errors.endDate}</p>}
+                  </div>
+                </div>
+                <p className="text-xs text-amber-600 font-medium">⚠️ Etsy מגביל מכירה ל-30 יום מקסימום</p>
+              </>
+            )}
+
+            {/* Info bar */}
+            <div className="bg-[rgba(0,109,67,0.06)] border border-[rgba(0,109,67,0.2)] rounded-xl px-4 py-3 flex items-center gap-2">
+              <CheckCheck className="w-4 h-4 text-[#006d43] flex-shrink-0" />
+              <p className="text-xs text-[#006d43]">
+                ההנחה תיווצר על {shopCount} חנויות במקביל. כל חנות תקבל כלל נפרד עם אותם הגדרות.
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+              <button onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">ביטול</button>
+              <div className="flex gap-3">
+                <button onClick={() => handleApply(false)} disabled={saving}
+                  className="px-4 py-2 text-sm border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin inline ml-1" /> : null}
+                  שמור כטיוטה
+                </button>
+                <button onClick={() => handleApply(true)} disabled={saving}
+                  className="flex items-center gap-2 px-4 py-2 text-sm bg-[#006d43] text-white rounded-lg hover:bg-[#005535] disabled:opacity-50">
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Layers className="w-4 h-4" />}
+                  החל על {shopCount} חנויות
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 const TABS = [
@@ -437,6 +717,7 @@ export default function DiscountsPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingRule, setEditingRule] = useState<DiscountRule | undefined>();
+  const [showBulkModal, setShowBulkModal] = useState(false);
 
   const shopId = selectedShop?.id;
 
@@ -539,6 +820,55 @@ export default function DiscountsPage() {
     }
   };
 
+  const handleBulkCreate = async (data: Partial<DiscountRule>) => {
+    const targets = visibleShops;
+    if (!targets.length) return;
+    const results = await Promise.allSettled(
+      targets.map(shop => discountsApi.createRule(shop.id, data))
+    );
+    const succeeded = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.length - succeeded;
+    // עדכן state
+    const newRules: Record<number, DiscountRule[]> = {};
+    results.forEach((r, i) => {
+      if (r.status === 'fulfilled') {
+        const sid = targets[i].id;
+        newRules[sid] = [r.value, ...(rulesByShop[sid] || [])];
+      }
+    });
+    setRulesByShop(prev => ({ ...prev, ...newRules }));
+    if (failed > 0) {
+      showToast(`נוצרו ${succeeded} הנחות, ${failed} נכשלו`, 'error');
+    } else {
+      showToast(`ההנחה נוצרה בהצלחה על ${succeeded} חנויות`, 'success');
+    }
+    setShowBulkModal(false);
+  };
+
+  const handleBulkDeactivate = async () => {
+    const activeRules = Object.entries(rulesByShop).flatMap(([, rules]) =>
+      rules.filter(r => r.is_active)
+    );
+    if (!activeRules.length) { showToast('אין הנחות פעילות לכיבוי', 'error'); return; }
+    const results = await Promise.allSettled(
+      activeRules.map(rule => discountsApi.toggleRule(rule.shop_id!, rule.id))
+    );
+    const succeeded = results.filter(r => r.status === 'fulfilled').length;
+    // עדכן state
+    results.forEach((r, i) => {
+      if (r.status === 'fulfilled') {
+        const updated = (r as PromiseFulfilledResult<DiscountRule>).value;
+        const sid = updated.shop_id!;
+        setRulesByShop(prev => ({
+          ...prev,
+          [sid]: (prev[sid] || []).map(rule => rule.id === updated.id ? updated : rule),
+        }));
+      }
+    });
+    showToast(`כובו ${succeeded} הנחות`, 'success');
+    setShowBulkModal(false);
+  };
+
   return (
     <DashboardLayout>
       <div className="max-w-[1200px] mx-auto space-y-6" dir="rtl">
@@ -555,6 +885,15 @@ export default function DiscountsPage() {
           <div className="flex gap-3">
             <button onClick={loadData} className="p-2 text-gray-400 hover:text-[#006d43] transition-colors rounded-lg hover:bg-gray-50">
               <RefreshCw className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setShowBulkModal(true)}
+              disabled={visibleShops.length === 0}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-[rgba(0,109,67,0.3)] text-[#006d43] rounded-lg font-medium hover:bg-[rgba(0,109,67,0.06)] transition-colors disabled:opacity-50 text-sm"
+              title="החל פעולה על כל החנויות"
+            >
+              <Layers className="w-4 h-4" />
+              כל החנויות
             </button>
             <button
               onClick={() => { setEditingRule(undefined); setShowModal(true); }}
@@ -709,6 +1048,15 @@ export default function DiscountsPage() {
           initial={editingRule}
           onClose={() => { setShowModal(false); setEditingRule(undefined); }}
           onSave={handleSave}
+        />
+      )}
+
+      {showBulkModal && (
+        <BulkActionModal
+          shopCount={visibleShops.length}
+          onClose={() => setShowBulkModal(false)}
+          onApplyAll={handleBulkCreate}
+          onDeactivateAll={handleBulkDeactivate}
         />
       )}
     </DashboardLayout>
