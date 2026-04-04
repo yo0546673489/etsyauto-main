@@ -18,6 +18,7 @@ import {
   Tag,
   Settings,
   Activity,
+  Store,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/lib/language-context';
@@ -42,6 +43,7 @@ const ownerNavItems: NavItem[] = [
   { name: 'הנחות',          href: '/discounts',            icon: Tag,           feature: 'discounts' },
   { name: 'הודעות',         href: '/messages',             icon: MessageCircle, feature: 'messages' },
   { name: 'אוטומציה',      href: '/automation',           icon: Activity,      feature: 'automations' },
+  { name: 'פתיחת חנות חדשה', href: '/stores/new',         icon: Store },
 ];
 
 const adminNavItems: NavItem[] = [
@@ -54,6 +56,7 @@ const adminNavItems: NavItem[] = [
   { name: 'הנחות',          href: '/discounts',        icon: Tag,           feature: 'discounts' },
   { name: 'הודעות',         href: '/messages',         icon: MessageCircle, feature: 'messages' },
   { name: 'אוטומציה',      href: '/automation',       icon: Activity,      feature: 'automations' },
+  { name: 'פתיחת חנות חדשה', href: '/stores/new',     icon: Store },
 ];
 
 const supplierNavItems: NavItem[] = [
