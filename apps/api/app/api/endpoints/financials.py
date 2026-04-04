@@ -386,7 +386,7 @@ async def update_entry_type_mapping(
     Set category and mark entry_type as mapped.
     Requires Owner/Admin role.
     """
-    if context.role.lower() not in ("owner", "admin"):
+    if context.role.lower() not in ("owner", "admin", "employee"):
         raise HTTPException(status_code=403, detail="Only owners and admins can update entry type mappings")
 
     reg = db.query(LedgerEntryTypeRegistry).filter(
@@ -543,7 +543,7 @@ async def trigger_financial_sync(
     Requires Owner/Admin role.
     force_full_sync: If true, re-fetches all ledger entries (fixes misclassified data).
     """
-    if context.role.lower() not in ("owner", "admin"):
+    if context.role.lower() not in ("owner", "admin", "employee"):
         raise HTTPException(status_code=403, detail="Only owners and admins can trigger syncs")
 
     if shop_id:

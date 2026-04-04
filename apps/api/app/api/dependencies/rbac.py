@@ -197,7 +197,7 @@ def require_shop_access(
             )
         
         # Check access permissions
-        if allow_all_shops_for_owner_admin and context.role.lower() in ('owner', 'admin') and not context.allowed_shop_ids:
+        if allow_all_shops_for_owner_admin and context.role.lower() in ('owner', 'admin', 'employee') and not context.allowed_shop_ids:
             return context
 
         if not can_access_shop(context.role, shop_id, context.allowed_shop_ids):

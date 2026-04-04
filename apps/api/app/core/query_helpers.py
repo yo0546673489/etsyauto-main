@@ -53,8 +53,8 @@ def filter_by_shops(
     if context.allowed_shop_ids:
         return query.filter(shop_id_column.in_(context.allowed_shop_ids))
 
-    if context.role.lower() in ('owner', 'admin'):
-        # Owner/Admin can access all shops in tenant if no explicit links set
+    if context.role.lower() in ('owner', 'admin', 'employee'):
+        # Owner/Admin/Employee can access all shops in tenant if no explicit links set
         return query.join(Shop).filter(Shop.tenant_id == context.tenant_id)
     
     # No allowed shops = no access
@@ -157,8 +157,8 @@ def ensure_shop_access(
             )
         return
 
-    # No explicit links: Owner/Admin can access all shops in tenant
-    if context.role.lower() in ('owner', 'admin'):
+    # No explicit links: Owner/Admin/Employee can access all shops in tenant
+    if context.role.lower() in ('owner', 'admin', 'employee'):
         return
 
     # Non-owner/admin with no explicit links

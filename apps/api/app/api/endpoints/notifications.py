@@ -302,7 +302,7 @@ async def create_notification(
     user_id = int(current_user["sub"])
     tenant_id = int(current_user["tenant_id"])
     role = current_user.get("role", "").lower()
-    if role not in ("owner", "admin"):
+    if role not in ("owner", "admin", "employee"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only owners and admins can create notifications"

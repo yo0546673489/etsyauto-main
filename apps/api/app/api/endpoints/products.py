@@ -232,7 +232,7 @@ async def export_problem_products(
     query = filter_by_tenant(db.query(Product), context.tenant_id, Product.tenant_id)
     
     # Suppliers/viewers: products in assigned shops OR tenant-wide (shop_id null)
-    if context.role.lower() not in ("owner", "admin"):
+    if context.role.lower() not in ("owner", "admin", "employee"):
         if context.allowed_shop_ids:
             query = query.filter(
                 or_(
@@ -366,7 +366,7 @@ async def list_products(
     query = filter_by_tenant(db.query(Product), context.tenant_id, Product.tenant_id)
     
     # Suppliers/viewers: products in assigned shops OR tenant-wide (shop_id null)
-    if context.role.lower() not in ("owner", "admin"):
+    if context.role.lower() not in ("owner", "admin", "employee"):
         if context.allowed_shop_ids:
             query = query.filter(
                 or_(

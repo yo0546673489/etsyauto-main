@@ -394,7 +394,7 @@ async def list_shops(
     # Filter by tenant
     query = filter_by_tenant(db.query(Shop), context.tenant_id, Shop.tenant_id)
 
-    is_owner_or_admin = context.role.lower() in ('owner', 'admin')
+    is_owner_or_admin = context.role.lower() in ('owner', 'admin', 'employee')
 
     if is_owner_or_admin:
         # Owner/Admin: always return all tenant shops (don't filter by allowed_shop_ids)
@@ -608,7 +608,7 @@ async def delete_shop_permanently(
     Requires: DISCONNECT_SHOP permission (Owner, Admin only)
     This action is irreversible.
     """
-    if context.role.lower() not in ('owner', 'admin'):
+    if context.role.lower() not in ('owner', 'admin', 'employee'):
         raise HTTPException(status_code=403, detail="Only owners and admins can permanently delete shops")
 
     ensure_shop_access(shop_id, context, db)

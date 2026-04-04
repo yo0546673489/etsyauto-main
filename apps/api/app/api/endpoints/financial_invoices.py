@@ -94,7 +94,7 @@ async def upload_invoice(
     db: Session = Depends(get_db),
 ):
     """Upload an expense invoice file and create an invoice record."""
-    if context.role.lower() not in ("owner", "admin"):
+    if context.role.lower() not in ("owner", "admin", "employee"):
         raise HTTPException(status_code=403, detail="Only owners and admins can upload invoices.")
 
     if shop_id:
@@ -315,7 +315,7 @@ async def update_invoice(
     db: Session = Depends(get_db),
 ):
     """Update invoice metadata or status (approve/reject)."""
-    if context.role.lower() not in ("owner", "admin"):
+    if context.role.lower() not in ("owner", "admin", "employee"):
         raise HTTPException(status_code=403, detail="Only owners and admins can update invoices.")
 
     inv = db.query(ExpenseInvoice).filter(
@@ -367,7 +367,7 @@ async def delete_invoice(
     db: Session = Depends(get_db),
 ):
     """Delete an invoice and its file."""
-    if context.role.lower() not in ("owner", "admin"):
+    if context.role.lower() not in ("owner", "admin", "employee"):
         raise HTTPException(status_code=403, detail="Only owners and admins can delete invoices.")
 
     inv = db.query(ExpenseInvoice).filter(
