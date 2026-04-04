@@ -23,6 +23,7 @@ class DiscountsService:
         return query.order_by(desc(DiscountRule.created_at)).all()
 
     def create_rule(self, db: Session, shop_id: int, data: dict) -> DiscountRule:
+        start_offset_minutes = data.pop('start_offset_minutes', 0)
         rule = DiscountRule(shop_id=shop_id, **data)
         db.add(rule)
         db.flush()
@@ -31,8 +32,8 @@ class DiscountsService:
             # יש תזמון מוגדר — ניצור tasks לפי הלוח
             self._generate_tasks(db, rule)
         elif rule.is_active:
-            # פעיל בלי תאריך — מתחיל מיד
-            self._create_immediate_task(db, rule, 'apply_discount')
+            # פעיל — מתחיל מיד או עם דחייה (לפיזור באלק)
+            self._create_immediate_task(db, rule, 'apply_discount', delay_minutes=start_offset_minutes)
 
         db.commit()
         db.refresh(rule)
@@ -125,8 +126,11 @@ class DiscountsService:
             query = query.filter(DiscountTask.status == status)
         return query.order_by(desc(DiscountTask.scheduled_for)).limit(limit).all()
 
-    def _create_immediate_task(self, db: Session, rule: DiscountRule, action: str):
-        """יוצר task שמתבצע מיד (scheduled_for = עכשיו)."""
+    def _create_immediate_task(self, db: Session, rule: DiscountRule, action: str, delay_minutes: int = 0):
+        """יוצר task שמתבצע מיד או עם דחייה (לפיזור פעולות בבאלק)."""
+        scheduled_for = datetime.now(timezone.utc)
+        if delay_minutes > 0:
+            scheduled_for += timedelta(minutes=delay_minutes)
         task = DiscountTask(
             rule_id=rule.id,
             shop_id=rule.shop_id,
@@ -134,7 +138,7 @@ class DiscountsService:
             discount_value=rule.discount_value if action == 'apply_discount' else None,
             scope=rule.scope,
             listing_ids=rule.listing_ids,
-            scheduled_for=datetime.now(timezone.utc),
+            scheduled_for=scheduled_for,
             status='pending',
         )
         db.add(task)

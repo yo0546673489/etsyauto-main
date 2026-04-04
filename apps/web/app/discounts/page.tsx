@@ -823,8 +823,13 @@ export default function DiscountsPage() {
   const handleBulkCreate = async (data: Partial<DiscountRule>) => {
     const targets = visibleShops;
     if (!targets.length) return;
+    // פיזור: כשיש יותר מחנות אחת — כל חנות מקבלת דחייה של 30 דקות
+    // חנות 0 = עכשיו, חנות 1 = +30 דקות, חנות 2 = +60 דקות וכו'
     const results = await Promise.allSettled(
-      targets.map(shop => discountsApi.createRule(shop.id, data))
+      targets.map((shop, index) => discountsApi.createRule(shop.id, {
+        ...data,
+        ...(targets.length > 1 ? { start_offset_minutes: index * 30 } : {}),
+      }))
     );
     const succeeded = results.filter(r => r.status === 'fulfilled').length;
     const failed = results.length - succeeded;

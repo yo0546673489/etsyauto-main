@@ -40,6 +40,7 @@ class RuleCreate(BaseModel):
     etsy_sale_name: Optional[str] = None
     status: str = "draft"
     is_active: bool = False
+    start_offset_minutes: int = 0  # לפיזור פעולות בבאלק — כמה דקות לדחות את ה-task
 
 
 class RuleUpdate(RuleCreate):
