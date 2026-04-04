@@ -41,6 +41,11 @@ class RuleCreate(BaseModel):
     status: str = "draft"
     is_active: bool = False
     start_offset_minutes: int = 0  # לפיזור פעולות בבאלק — כמה דקות לדחות את ה-task
+    # סבב אוטומטי
+    auto_rotate: bool = False
+    auto_min_percent: Optional[float] = None
+    auto_max_percent: Optional[float] = None
+    auto_interval_days: Optional[int] = None
 
 
 class RuleUpdate(RuleCreate):

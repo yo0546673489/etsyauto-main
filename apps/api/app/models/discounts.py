@@ -40,6 +40,13 @@ class DiscountRule(Base):
     terms_text = Column(String(500), nullable=True)
     etsy_sale_name = Column(String(200), nullable=True)
 
+    # סבב אוטומטי (auto-rotate)
+    auto_rotate = Column(Boolean, default=False, nullable=False)
+    auto_min_percent = Column(Float, nullable=True)
+    auto_max_percent = Column(Float, nullable=True)
+    auto_interval_days = Column(Integer, nullable=True)
+    last_rotated_at = Column(DateTime(timezone=True), nullable=True)
+
     # סטטוס
     status = Column(String(50), default="draft", nullable=False)
     is_active = Column(Boolean, default=False, nullable=False)

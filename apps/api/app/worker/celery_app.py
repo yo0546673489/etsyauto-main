@@ -27,6 +27,7 @@ celery_app = Celery(
         "app.worker.tasks.financial_tasks",
         "app.worker.tasks.exchange_rate_tasks",
         "app.worker.tasks.messaging",
+        "app.worker.tasks.discount_rotation_tasks",
     ]
 )
 
@@ -90,5 +91,9 @@ celery_app.conf.beat_schedule = {
     "check-adspower-health": {
         "task": "app.worker.tasks.messaging.check_adspower_health",
         "schedule": 1800.0,
+    },
+    "rotate-auto-discounts-hourly": {
+        "task": "app.worker.tasks.discount_rotation_tasks.rotate_auto_discounts",
+        "schedule": 3600.0,  # כל שעה — בודק אם צריך לסובב הנחות
     },
 }
