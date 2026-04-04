@@ -859,21 +859,45 @@ export default function DiscountsPage() {
     const varyDiscount = (base: number): number => {
       if (base <= 0) return base;
       const roll = Math.random();
-      if (roll < 0.25) return base;                          // 25% — זהה לבסיס
-      if (roll < 0.55) return Math.max(1, base - 1);        // 30% — פחות 1%
-      if (roll < 0.80) return Math.min(75, base + 1);       // 25% — פלוס 1%
-      if (roll < 0.92) return Math.max(1, base - 2);        // 12% — פחות 2%
-      return Math.min(75, base + 2);                        // 8%  — פלוס 2%
+      if (roll < 0.25) return base;
+      if (roll < 0.55) return Math.max(1, base - 1);
+      if (roll < 0.80) return Math.min(75, base + 1);
+      if (roll < 0.92) return Math.max(1, base - 2);
+      return Math.min(75, base + 2);
+    };
+
+    // שמות מכירה טבעיים — נראים אנושיים, לא חוזרים על עצמם
+    const SALE_NAME_POOL = [
+      'Spring Sale', 'Summer Sale', 'Fall Sale', 'Winter Sale',
+      'Weekend Deal', 'Flash Sale', 'Special Offer', 'Limited Deal',
+      'Seasonal Sale', 'Clearance Sale', 'Holiday Sale', 'End of Season',
+      'Spring Offer', 'Summer Offer', 'Weekly Deal', 'Daily Deal',
+      'Shop Sale', 'Store Sale', 'Big Sale', 'Spring Promo',
+      'Summer Promo', 'Fall Promo', 'Winter Promo', 'New Arrival Sale',
+      'Fan Favorite Sale', 'Top Picks Sale', 'Best Seller Sale', 'Spring Fling',
+      'Summer Fun', 'Cozy Sale', 'Fresh Deals', 'New Deals',
+    ];
+    const usedNames = new Set<string>();
+    const pickSaleName = (base?: string): string => {
+      // אם ניתן שם בסיס ויש חנות אחת — השתמש בו
+      const pool = SALE_NAME_POOL.filter(n => !usedNames.has(n));
+      const name = pool.length > 0
+        ? pool[Math.floor(Math.random() * pool.length)]
+        : SALE_NAME_POOL[Math.floor(Math.random() * SALE_NAME_POOL.length)];
+      usedNames.add(name);
+      return name;
     };
 
     const offsets = generateRandomOffsets(targets.length);
     const baseDiscount = typeof data.discount_value === 'number' ? data.discount_value : 0;
+    const isMulti = targets.length > 1;
 
     const results = await Promise.allSettled(
       targets.map((shop, index) => discountsApi.createRule(shop.id, {
         ...data,
-        discount_value: targets.length > 1 ? varyDiscount(baseDiscount) : baseDiscount,
-        ...(targets.length > 1 ? { start_offset_minutes: offsets[index] } : {}),
+        discount_value: isMulti ? varyDiscount(baseDiscount) : baseDiscount,
+        etsy_sale_name: isMulti ? pickSaleName(data.etsy_sale_name ?? undefined) : data.etsy_sale_name,
+        ...(isMulti ? { start_offset_minutes: offsets[index] } : {}),
       }))
     );
     const succeeded = results.filter(r => r.status === 'fulfilled').length;
