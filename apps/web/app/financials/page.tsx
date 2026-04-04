@@ -380,36 +380,40 @@ function ExpandableCard({
 }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
   return (
-    <div className="rounded-xl border bg-white dark:bg-gray-900 overflow-hidden shadow-sm">
+    <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-gray-100/80 overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between p-5 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+        className="w-full flex items-center justify-between px-6 py-5 text-left hover:bg-gray-50/60 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-            <Icon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <div className={cn(
+            'w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0',
+            totalPositive ? 'bg-green-50' : 'bg-red-50'
+          )}>
+            <Icon className={cn('w-5 h-5', totalPositive ? 'text-[#006d43]' : 'text-red-500')} />
           </div>
-          <span className="font-medium text-gray-900 dark:text-gray-100">{title}</span>
+          <span className="font-black text-gray-800">{title}</span>
         </div>
         <div className="flex items-center gap-2">
           <span
             className={cn(
-              'text-lg font-semibold',
-              totalPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+              'text-xl font-black',
+              totalPositive ? 'text-[#006d43]' : 'text-red-500'
             )}
+            dir="ltr"
           >
             {totalValue}
           </span>
           {expanded ? (
-            <ChevronUp className="w-5 h-5 text-gray-400" />
+            <ChevronUp className="w-4 h-4 text-gray-400" />
           ) : (
-            <ChevronDown className="w-5 h-5 text-gray-400" />
+            <ChevronDown className="w-4 h-4 text-gray-400" />
           )}
         </div>
       </button>
       {expanded && (
-        <div className="border-t dark:border-gray-800 px-5 py-4 bg-gray-50/50 dark:bg-gray-800/30">
+        <div className="border-t border-gray-100 px-6 py-4 bg-gray-50/40">
           {children}
         </div>
       )}
@@ -585,26 +589,15 @@ function StatCard({
   className?: string;
 }) {
   return (
-    <div className={cn('rounded-xl border bg-white dark:bg-gray-900 p-5 shadow-sm', className)}>
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</span>
-        <Icon className="w-5 h-5 text-gray-400" />
+    <div className={cn('bg-white rounded-2xl px-6 pt-5 pb-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-gray-100/80', className)}>
+      <div className="flex items-center justify-between mb-5">
+        <span className={cn('text-sm font-semibold', positive === false ? 'text-red-400' : positive === true ? 'text-[#006d43]' : 'text-gray-400')}>{subtitle || ''}</span>
+        <div className={cn('w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0', positive === false ? 'bg-red-50' : 'bg-green-50')}>
+          <Icon className={cn('w-[22px] h-[22px]', positive === false ? 'text-red-500' : 'text-[#006d43]')} strokeWidth={1.8} />
+        </div>
       </div>
-      <p className="mt-2 text-2xl font-bold tracking-tight">{value}</p>
-      {subtitle && (
-        <p
-          className={cn(
-            'mt-1 text-xs flex items-center gap-1',
-            positive === true && 'text-emerald-600',
-            positive === false && 'text-red-500',
-            positive === undefined && 'text-gray-500 dark:text-gray-400'
-          )}
-        >
-          {positive === true && <ArrowUpRight className="w-3 h-3" />}
-          {positive === false && <ArrowDownRight className="w-3 h-3" />}
-          {subtitle}
-        </p>
-      )}
+      <p className="text-sm text-gray-400 text-center mb-1.5">{title}</p>
+      <p className={cn('text-[28px] leading-tight font-black text-center', positive === false ? 'text-red-500' : 'text-gray-800')} dir="ltr">{value}</p>
     </div>
   );
 }
@@ -612,7 +605,7 @@ function StatCard({
 function SectionHeader({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between mb-4">
-      <h2 className="text-lg font-semibold">{title}</h2>
+      <h2 className="text-lg font-black text-gray-800">{title}</h2>
       {children}
     </div>
   );
@@ -638,10 +631,13 @@ function FinancialSummaryCards({
     return (
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="rounded-xl border bg-white dark:bg-gray-900 p-5 shadow-sm animate-pulse">
-            <div className="h-4 w-28 bg-gray-200 dark:bg-gray-700 rounded mb-3" />
-            <div className="h-8 w-36 bg-gray-200 dark:bg-gray-700 rounded mb-2" />
-            <div className="h-3 w-24 bg-gray-100 dark:bg-gray-800 rounded" />
+          <div key={i} className="bg-white rounded-2xl px-6 pt-5 pb-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-gray-100/80 animate-pulse">
+            <div className="flex items-center justify-between mb-5">
+              <div className="h-4 w-20 bg-gray-200 rounded" />
+              <div className="w-12 h-12 rounded-full bg-gray-100" />
+            </div>
+            <div className="h-4 w-24 bg-gray-100 rounded mx-auto mb-2" />
+            <div className="h-8 w-32 bg-gray-200 rounded mx-auto" />
           </div>
         ))}
       </div>
@@ -649,75 +645,53 @@ function FinancialSummaryCards({
   }
 
   const payoutValue = payout
-    ? formatWithConversion(
-        payout.available_for_payout,
-        payout.currency,
-        payout.converted_available_for_payout,
-        payout.converted_currency
-      )
+    ? formatWithConversion(payout.available_for_payout, payout.currency, payout.converted_available_for_payout, payout.converted_currency)
     : '—';
   const payoutPositive = payout ? payout.available_for_payout >= 0 : true;
 
   const balanceValue = payout
-    ? formatWithConversion(
-        payout.current_balance,
-        payout.currency,
-        payout.converted_current_balance,
-        payout.converted_currency
-      )
+    ? formatWithConversion(payout.current_balance, payout.currency, payout.converted_current_balance, payout.converted_currency)
     : '—';
   const balancePositive = payout ? payout.current_balance >= 0 : true;
 
   const profitValue = summary
-    ? formatWithConversion(
-        summary.net_profit,
-        summary.currency,
-        summary.converted_net_profit,
-        summary.converted_currency
-      )
+    ? formatWithConversion(summary.net_profit, summary.currency, summary.converted_net_profit, summary.converted_currency)
     : '—';
   const profitPositive = summary ? summary.net_profit >= 0 : undefined;
 
-  const cards: {
-    id: 'payout' | 'balance' | 'profit';
-    title: string;
-    value: string;
-    subtitle: string;
-    positive: boolean | undefined;
-    icon: React.ComponentType<{ className?: string }>;
-    accentClass: string;
-  }[] = [
+  const cards = [
     {
-      id: 'payout',
-      title: t('financials.upcomingPayout'),
-      value: payoutValue,
-      subtitle: t('financials.availableForPayout'),
-      positive: payoutPositive,
-      icon: Banknote,
-      accentClass: 'border-emerald-200 dark:border-emerald-800',
-    },
-    {
-      id: 'balance',
-      title: t('financials.currentBalance'),
-      value: balanceValue,
-      subtitle: payout?.reserve_held
-        ? `${t('financials.reserve')}: ${formatWithConversion(payout.reserve_held, payout.currency, payout.converted_reserve_held, payout.converted_currency)}`
-        : t('financials.etsyWallet'),
-      positive: balancePositive,
-      icon: Wallet,
-      accentClass: 'border-blue-200 dark:border-blue-800',
-    },
-    {
-      id: 'profit',
-      title: t('financials.netProfit'),
-      value: profitValue,
-      subtitle: t('financials.afterFeesAndRefunds'),
-      positive: profitPositive,
+      id: 'profit' as const,
+      badge: profitPositive === false ? t('financials.loss') : t('financials.profitable'),
+      badgeColor: profitPositive === false ? 'text-red-500' : 'text-[#006d43]',
       icon: profitPositive !== false ? TrendingUp : TrendingDown,
-      accentClass:
-        profitPositive === false
-          ? 'border-red-200 dark:border-red-800'
-          : 'border-purple-200 dark:border-purple-800',
+      iconBg: profitPositive === false ? 'bg-red-50' : 'bg-green-50',
+      iconColor: profitPositive === false ? 'text-red-500' : 'text-[#006d43]',
+      label: t('financials.netProfit'),
+      value: profitValue,
+      valueColor: profitPositive === false ? 'text-red-500' : 'text-[#006d43]',
+    },
+    {
+      id: 'balance' as const,
+      badge: balancePositive ? t('financials.currentBalance') : t('financials.loss'),
+      badgeColor: balancePositive ? 'text-blue-500' : 'text-red-500',
+      icon: Wallet,
+      iconBg: 'bg-blue-50',
+      iconColor: 'text-blue-500',
+      label: t('financials.currentBalance'),
+      value: balanceValue,
+      valueColor: balancePositive ? 'text-gray-800' : 'text-red-500',
+    },
+    {
+      id: 'payout' as const,
+      badge: payoutPositive ? t('financials.availableForPayout') : t('financials.loss'),
+      badgeColor: payoutPositive ? 'text-[#006d43]' : 'text-red-500',
+      icon: Banknote,
+      iconBg: 'bg-emerald-50',
+      iconColor: 'text-[#006d43]',
+      label: t('financials.upcomingPayout'),
+      value: payoutValue,
+      valueColor: payoutPositive ? 'text-[#006d43]' : 'text-red-500',
     },
   ];
 
@@ -730,32 +704,17 @@ function FinancialSummaryCards({
             key={card.id}
             type="button"
             onClick={() => onCardClick(card.id)}
-            className={cn(
-              'rounded-xl border-2 bg-white dark:bg-gray-900 p-5 shadow-sm text-left',
-              'hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 cursor-pointer',
-              'focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500',
-              card.accentClass
-            )}
+            className="bg-white rounded-2xl px-6 pt-5 pb-6 shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-gray-100/80 hover:shadow-md hover:-translate-y-0.5 transition-all duration-150 cursor-pointer text-right"
           >
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">
-                {card.title}
-              </span>
-              <Icon className="w-5 h-5 text-gray-400 dark:text-gray-500" />
+            <div className="flex items-center justify-between mb-5">
+              <span className={cn('text-sm font-semibold', card.badgeColor)}>{card.badge}</span>
+              <div className={cn('w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0', card.iconBg)}>
+                <Icon className={cn('w-[22px] h-[22px]', card.iconColor)} strokeWidth={1.8} />
+              </div>
             </div>
-            <p
-              className={cn(
-                'text-2xl font-bold tracking-tight',
-                card.positive === true && 'text-emerald-600 dark:text-emerald-400',
-                card.positive === false && 'text-red-600 dark:text-red-400',
-                card.positive === undefined && 'text-gray-900 dark:text-gray-100'
-              )}
-            >
+            <p className="text-sm text-gray-400 text-center mb-1.5">{card.label}</p>
+            <p className={cn('text-[28px] leading-tight font-black text-center', card.valueColor)} dir="ltr">
               {card.value}
-            </p>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-              {card.subtitle}
-              <ArrowUpRight className="w-3 h-3 opacity-50" />
             </p>
           </button>
         );
@@ -1295,38 +1254,38 @@ export default function FinancialsPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="max-w-[1300px] mx-auto space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
         <DisconnectedShopBanner />
         {/* ── Header ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">{t('financials.title')}</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <div className="flex items-start justify-between">
+          <div className="text-right">
+            <h1 className="text-3xl font-black text-gray-800">{t('financials.title')}</h1>
+            <p className="text-gray-400 mt-1 text-sm">
               {t('financials.subtitle')}{' '}
               {shopIds && shopIds.length > 1 ? `${shopIds.length} ${t('financials.selectedShops')}` : selectedShop?.display_name || t('financials.allShops')}
             </p>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Period dropdown (matches TopBar design) */}
+            {/* Period dropdown */}
             <div className="relative">
               <button
                 onClick={() => setShowPeriodMenu(!showPeriodMenu)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-500 transition-colors min-w-[280px] shadow-sm"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 hover:border-[#006d43] transition-colors min-w-[220px] shadow-sm"
               >
-                <Calendar className="w-4 h-4 flex-shrink-0 text-slate-500 dark:text-slate-400" />
-                <span className="text-sm font-medium flex-1 text-start truncate">
+                <Calendar className="w-4 h-4 flex-shrink-0 text-gray-400" />
+                <span className="text-sm font-semibold flex-1 text-start truncate">
                   {periodToLabel(period, customStart, customEnd, t, isRTL ? 'he-IL' : 'en-US')}
                 </span>
-                <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${showPeriodMenu ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform ${showPeriodMenu ? 'rotate-180' : ''}`} />
               </button>
 
               {showPeriodMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowPeriodMenu(false)} />
-                  <div className="absolute end-0 mt-2 w-80 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl shadow-xl z-50 overflow-hidden">
-                    <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('dateRange.label')}</p>
+                  <div className="absolute end-0 mt-2 w-72 bg-white border border-gray-100 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] z-50 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-gray-100">
+                      <p className="text-xs font-bold uppercase tracking-wider text-gray-400">{t('dateRange.label')}</p>
                     </div>
                     <div className="py-1">
                       {PERIOD_OPTIONS.filter(p => p !== 'custom').map((p) => (
@@ -1335,12 +1294,12 @@ export default function FinancialsPage() {
                           onClick={() => { setPeriod(p); persistPeriod(p); setShowPeriodMenu(false); }}
                           className={`w-full flex items-center px-4 py-2.5 text-right transition-colors ${
                             period === p
-                              ? 'bg-slate-100 dark:bg-slate-700/50 text-slate-800 dark:text-slate-200'
-                              : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                              ? 'bg-green-50 text-[#006d43]'
+                              : 'text-gray-700 hover:bg-gray-50'
                           }`}
                         >
-                          <span className="text-sm">{periodToLabel(p, undefined, undefined, t)}</span>
-                          {period === p && <CheckCircle strokeWidth={1.5} className="ms-auto w-4 h-4 flex-shrink-0 text-slate-900 dark:text-slate-100" />}
+                          <span className="text-sm font-medium">{periodToLabel(p, undefined, undefined, t)}</span>
+                          {period === p && <CheckCircle strokeWidth={2} className="ms-auto w-4 h-4 flex-shrink-0 text-[#006d43]" />}
                         </button>
                       ))}
                     </div>
@@ -1405,7 +1364,7 @@ export default function FinancialsPage() {
                     }
                   }
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:border-[#006d43] transition-colors"
               >
                 {showComparison ? t('financials.hideComparison') : t('financials.compareShops')}
               </button>
@@ -1417,7 +1376,7 @@ export default function FinancialsPage() {
               <button
                 onClick={() => handleSync(false)}
                 disabled={syncing}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-500 hover:bg-slate-50 dark:hover:bg-slate-700/50 disabled:opacity-50 transition-colors shadow-sm"
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#006d43] text-white hover:bg-[#005a37] disabled:opacity-50 transition-colors shadow-sm font-semibold text-sm"
               >
                 <RefreshCw className={cn('w-4 h-4', syncing && 'animate-spin')} />
                 {t('financials.sync')}
@@ -1545,16 +1504,16 @@ export default function FinancialsPage() {
         />
 
         {/* ── Activity Summary (Etsy-style) ── */}
-        <div className="rounded-xl border bg-white dark:bg-gray-900 p-6 shadow-sm">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+        <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-gray-100/80 p-6">
+          <h2 className="text-lg font-black text-gray-800 mb-4">
             {t('financials.activitySummary')}
           </h2>
 
           {/* Current Etsy Wallet Balance */}
           {payout && (
-            <p className="text-base text-gray-700 dark:text-gray-300 mb-4">
+            <p className="text-sm text-gray-500 mb-2">
               {t('financials.yourCurrentBalance')}{' '}
-              <strong className="text-gray-900 dark:text-gray-100">
+              <strong className="text-gray-800 font-black">
                 {formatWithConversion(payout.current_balance, payout.currency, payout.converted_current_balance, payout.converted_currency)}
               </strong>
               .
@@ -1563,11 +1522,12 @@ export default function FinancialsPage() {
 
           {/* Net Profit for selected period */}
           {summary && (
-            <p className="text-base text-gray-700 dark:text-gray-300 mb-6">
+            <p className="text-sm text-gray-500 mb-6">
               {t('financials.yourNetProfit')}{' '}
               <strong
                 className={cn(
-                  summary.net_profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+                  'font-black',
+                  summary.net_profit >= 0 ? 'text-[#006d43]' : 'text-red-500'
                 )}
               >
                 {formatWithConversion(summary.net_profit, summary.currency, summary.converted_net_profit, summary.converted_currency)}
@@ -1707,13 +1667,13 @@ export default function FinancialsPage() {
 
         {/* ── Invoice Expenses Section ── */}
         {user?.role && ['owner', 'admin'].includes(user.role.toLowerCase()) && (
-          <div className="rounded-xl border bg-white dark:bg-gray-900 p-5 shadow-sm">
+          <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-gray-100/80 p-6">
             <SectionHeader title={t('financials.expenseInvoices')}>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-400">
                   {invoices?.total_count ?? 0} {t('financials.invoicesCount')}
                 </span>
-                <label className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors">
+                <label className="inline-flex items-center gap-1.5 rounded-xl bg-[#006d43] text-white px-4 py-2 text-sm font-semibold hover:bg-[#005a37] cursor-pointer transition-colors">
                   <FileUp className="w-4 h-4" />
                   {uploading ? t('financials.uploading') : t('financials.uploadInvoice')}
                   <input
@@ -1731,13 +1691,13 @@ export default function FinancialsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-gray-50 dark:bg-gray-800/50 text-left">
-                      <th className="px-4 py-2 font-medium text-gray-500">{t('financials.table.file')}</th>
-                      <th className="px-4 py-2 font-medium text-gray-500">{t('financials.table.vendor')}</th>
-                      <th className="px-4 py-2 font-medium text-gray-500">{t('financials.table.date')}</th>
-                      <th className="px-4 py-2 font-medium text-gray-500 text-right">{t('financials.table.amount')}</th>
-                      <th className="px-4 py-2 font-medium text-gray-500">{t('financials.table.status')}</th>
-                      <th className="px-4 py-2 font-medium text-gray-500">{t('financials.table.actions')}</th>
+                    <tr className="bg-gray-50/80 text-left border-b border-gray-100">
+                      <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">{t('financials.table.file')}</th>
+                      <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">{t('financials.table.vendor')}</th>
+                      <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">{t('financials.table.date')}</th>
+                      <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">{t('financials.table.amount')}</th>
+                      <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">{t('financials.table.status')}</th>
+                      <th className="px-4 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">{t('financials.table.actions')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y dark:divide-gray-800">
@@ -1809,7 +1769,7 @@ export default function FinancialsPage() {
 
         {/* ── Payout bar ── */}
         {payout && (
-          <div className="rounded-xl border bg-white dark:bg-gray-900 p-5 shadow-sm">
+          <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-gray-100/80 p-6">
             <SectionHeader title={t('financials.payoutEstimate')}>
               <span className="text-xs text-gray-400">
                 {t('financials.asOf')} {shortDate(payout.as_of, isRTL ? 'he-IL' : 'en-US')}
@@ -1861,7 +1821,7 @@ export default function FinancialsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Fee breakdown */}
           {fees && (
-            <div className="rounded-xl border bg-white dark:bg-gray-900 p-5 shadow-sm">
+            <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-gray-100/80 p-6">
               <SectionHeader title={t('financials.feeBreakdown')}>
                 <span className="text-sm font-semibold text-gray-500">
                   {formatWithConversion(fees.total_fees, fees.currency, fees.converted_total_fees, fees.converted_currency)}
@@ -1903,7 +1863,7 @@ export default function FinancialsPage() {
 
           {/* Revenue timeline (simple bar chart) */}
           {timeline && (
-            <div className="rounded-xl border bg-white dark:bg-gray-900 p-5 shadow-sm">
+            <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-gray-100/80 p-6">
               <SectionHeader title={t('financials.revenueTimeline')}>
                 <span className="text-xs text-gray-400 capitalize">{timeline.granularity}</span>
               </SectionHeader>
@@ -1957,14 +1917,14 @@ export default function FinancialsPage() {
 
         {/* ── Recent activities (Ledger) ── */}
         {ledger && (
-          <div className="rounded-xl border bg-white dark:bg-gray-900 shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-gray-100/80 overflow-hidden">
             <div className="p-5 border-b dark:border-gray-800">
               <SectionHeader title={t('financials.recentActivities')}>
                 <div className="flex items-center gap-2">
                   <div className="relative">
                     <button
                       onClick={() => setShowLedgerTypeMenu(!showLedgerTypeMenu)}
-                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 hover:border-slate-300 dark:hover:border-slate-500 transition-colors min-w-[160px] shadow-sm"
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 hover:border-[#006d43] transition-colors min-w-[160px] shadow-sm"
                     >
                       <Filter className="w-4 h-4 flex-shrink-0 text-slate-500 dark:text-slate-400" />
                       <span className="text-sm font-medium flex-1 text-left truncate">
@@ -1979,10 +1939,10 @@ export default function FinancialsPage() {
                           className="fixed inset-0 z-40"
                           onClick={() => setShowLedgerTypeMenu(false)}
                         />
-                        <div className="absolute left-0 mt-2 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl shadow-xl z-50 overflow-hidden">
-                          <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-700">
-                            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                              {t('financials.filterByType') || 'Filter by type'}
+                        <div className="absolute left-0 mt-2 w-64 bg-white border border-gray-100 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] z-50 overflow-hidden">
+                          <div className="px-4 py-3 border-b border-gray-100">
+                            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                              {t('financials.filterByType')}
                             </p>
                           </div>
                           <div className="py-1 max-h-72 overflow-y-auto">
@@ -1991,18 +1951,18 @@ export default function FinancialsPage() {
                                 key={opt.value || 'all'}
                                 onClick={() => {
                                   setLedgerFilter(opt.value);
-                      setLedgerPage(0);
+                                  setLedgerPage(0);
                                   setShowLedgerTypeMenu(false);
                                 }}
                                 className={`w-full flex items-center px-4 py-2.5 text-left transition-colors ${
                                   ledgerFilter === opt.value
-                                    ? 'bg-slate-100 dark:bg-slate-700/50 text-slate-800 dark:text-slate-200'
-                                    : 'text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50'
+                                    ? 'bg-green-50 text-[#006d43]'
+                                    : 'text-gray-700 hover:bg-gray-50'
                                 }`}
                               >
-                                <span className="text-sm">{t(opt.labelKey)}</span>
+                                <span className="text-sm font-medium">{t(opt.labelKey)}</span>
                                 {ledgerFilter === opt.value && (
-                                  <CheckCircle strokeWidth={1.5} className="ml-auto w-4 h-4 flex-shrink-0 text-slate-900 dark:text-slate-100" />
+                                  <CheckCircle strokeWidth={2} className="ml-auto w-4 h-4 flex-shrink-0 text-[#006d43]" />
                                 )}
                               </button>
                             ))}
@@ -2019,12 +1979,12 @@ export default function FinancialsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50 dark:bg-gray-800/50 text-left">
-                    <th className="px-5 py-3 font-medium text-gray-500">{t('financials.table.date')}</th>
-                    <th className="px-5 py-3 font-medium text-gray-500">{t('financials.table.type')}</th>
-                    <th className="px-5 py-3 font-medium text-gray-500">{t('financials.table.description')}</th>
-                    <th className="px-5 py-3 font-medium text-gray-500 text-right">{t('financials.table.net')}</th>
-                    <th className="px-5 py-3 font-medium text-gray-500 text-right">{t('financials.table.balance')}</th>
+                  <tr className="bg-gray-50/80 text-left border-b border-gray-100">
+                    <th className="px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">{t('financials.table.date')}</th>
+                    <th className="px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">{t('financials.table.type')}</th>
+                    <th className="px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider">{t('financials.table.description')}</th>
+                    <th className="px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">{t('financials.table.net')}</th>
+                    <th className="px-5 py-3 text-xs font-bold text-gray-400 uppercase tracking-wider text-right">{t('financials.table.balance')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y dark:divide-gray-800">
