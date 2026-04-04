@@ -15,12 +15,20 @@ export interface ScrapedMessage {
   senderType: 'customer' | 'store';
   messageText: string;
   sentAt: string;
+  imageUrls?: string[];
+}
+
+export interface ScrapedSubjectListing {
+  url?: string;
+  image?: string;
+  title?: string;
 }
 
 export interface ScrapedConversation {
   conversationUrl: string;
   customerName: string;
   messages: ScrapedMessage[];
+  subjectListing?: ScrapedSubjectListing;
 }
 
 export class EtsyScraper {
@@ -159,7 +167,7 @@ export class EtsyScraper {
     // ── 6. Scrape messages ────────────────────────────────────────────────────
     const scraped = await this.page.evaluate((storeName: string) => {
       const container = document.querySelector('div.scrolling-message-list');
-      if (!container) return { messages: [], customerName: '' };
+      if (!container) return { messages: [], customerName: '', subjectListing: null };
 
       // Customer name from conversation header
       const headerEl = container.querySelector('[class*="conversation"] [class*="name"], h1, h2');
@@ -171,9 +179,49 @@ export class EtsyScraper {
         if (h1) customerName = h1.textContent?.trim() || '';
       }
 
-      // Message bubbles
+      // ── Subject listing (product being discussed) ──────────────────────────
+      // Etsy shows a listing card above/near the message thread for order-related conversations
+      let subjectListing: { url?: string; image?: string; title?: string } | null = null;
+
+      // Strategy 1: any <a href="/listing/..."> that contains an <img>
+      const allListingLinks = Array.from(document.querySelectorAll('a[href*="/listing/"]')) as HTMLAnchorElement[];
+      for (const link of allListingLinks) {
+        const img = link.querySelector('img') as HTMLImageElement | null;
+        if (!img) {
+          // Check parent elements for nearby image
+          const parent = link.closest('[class]');
+          const nearbyImg = parent ? parent.querySelector('img') as HTMLImageElement | null : null;
+          if (!nearbyImg) continue;
+          const src = nearbyImg.src;
+          if (!src || src.includes('avatar') || src.includes('user_icon') || src.includes('etsy-icon')) continue;
+          const titleEl = link.querySelector('h1, h2, h3, p, [class*="title"]') || link;
+          subjectListing = {
+            url: link.href,
+            image: src,
+            title: (titleEl?.textContent?.trim() || '').replace(/\s+/g, ' ').substring(0, 200) || undefined,
+          };
+          break;
+        }
+        const src = img.src;
+        if (!src || src.includes('avatar') || src.includes('user_icon') || src.includes('etsy-icon')) continue;
+        const titleEl = link.querySelector('h1, h2, h3, p, [class*="title"]') || link;
+        subjectListing = {
+          url: link.href,
+          image: src,
+          title: (titleEl?.textContent?.trim() || '').replace(/\s+/g, ' ').substring(0, 200) || undefined,
+        };
+        break;
+      }
+
+      // ── Message bubbles ────────────────────────────────────────────────────
       const bubbles = container.querySelectorAll('div.wt-rounded.wt-text-body-01');
-      const messages: { senderType: string; senderName: string; messageText: string; sentAt: string }[] = [];
+      const messages: {
+        senderType: string;
+        senderName: string;
+        messageText: string;
+        sentAt: string;
+        imageUrls: string[];
+      }[] = [];
 
       bubbles.forEach(el => {
         const text = el.textContent?.trim() || '';
@@ -205,11 +253,32 @@ export class EtsyScraper {
             return false;
           })();
 
+        // Extract images attached to this message
+        // Look in a wider area around the bubble (Etsy renders images in sibling elements)
+        const searchArea = el.closest('[class*="message"], [class*="bubble"], [class*="chat"]') || el.parentElement || el;
+        const imgEls = Array.from(searchArea.querySelectorAll('img[src]')) as HTMLImageElement[];
+        const imageUrls: string[] = [];
+        imgEls.forEach(img => {
+          const src = img.src || '';
+          if (
+            src.startsWith('http') &&
+            !src.includes('avatar') &&
+            !src.includes('user_icon') &&
+            !src.includes('etsy-icon') &&
+            !src.includes('favicon') &&
+            !src.includes('logo') &&
+            src.length > 10
+          ) {
+            if (!imageUrls.includes(src)) imageUrls.push(src);
+          }
+        });
+
         messages.push({
           senderType: isStore ? 'store' : 'customer',
           senderName: isStore ? storeName : '',
           messageText: clean,
           sentAt: new Date().toISOString(),
+          imageUrls,
         });
       });
 
@@ -218,7 +287,7 @@ export class EtsyScraper {
         (m, i) => i === 0 || m.messageText !== messages[i - 1].messageText
       );
 
-      return { messages: deduped, customerName };
+      return { messages: deduped, customerName, subjectListing };
     }, this.storeName);
 
     // ── 7. Validate result ────────────────────────────────────────────────────
@@ -243,10 +312,15 @@ export class EtsyScraper {
     const totalTextLength = scraped.messages.reduce((acc, m) => acc + m.messageText.length, 0);
     await this.human.readingDelay(Math.min(totalTextLength, 500));
 
+    if (scraped.subjectListing?.image) {
+      logger.info(`[EtsyScraper] ✓ Subject listing found: ${scraped.subjectListing.url?.substring(0, 60)}`);
+    }
+
     return {
       conversationUrl: finalUrl,
       customerName,
       messages: scraped.messages as ScrapedMessage[],
+      subjectListing: scraped.subjectListing || undefined,
     };
   }
 }

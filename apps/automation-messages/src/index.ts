@@ -38,7 +38,7 @@ async function main() {
 
   const fs = await import('fs');
   const path = await import('path');
-  for (const migration of ['001_initial.sql', '002_reviews_discounts.sql', '003_listing_previews.sql']) {
+  for (const migration of ['001_initial.sql', '002_reviews_discounts.sql', '003_listing_previews.sql', '004_conversation_images.sql']) {
     const migrationPath = path.join(__dirname, 'db/migrations', migration);
     if (fs.existsSync(migrationPath)) {
       const sql = fs.readFileSync(migrationPath, 'utf-8');

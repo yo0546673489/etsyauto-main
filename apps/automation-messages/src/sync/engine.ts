@@ -58,11 +58,31 @@ export class SyncEngine {
           );
           logger.info(`Updated conversation ${conversationId} URL to: ${preferredUrl}`);
         }
+        // Update subject listing if we newly scraped it
+        if (scraped.subjectListing?.image) {
+          await client.query(
+            `UPDATE conversations
+             SET subject_listing_url = COALESCE(subject_listing_url, $1),
+                 subject_listing_image = COALESCE(subject_listing_image, $2),
+                 subject_listing_title = COALESCE(subject_listing_title, $3)
+             WHERE id = $4`,
+            [scraped.subjectListing.url || null, scraped.subjectListing.image, scraped.subjectListing.title || null, conversationId]
+          );
+        }
       } else {
         const inserted = await client.query(
-          `INSERT INTO conversations (store_id, etsy_conversation_url, customer_name, status)
-           VALUES ($1, $2, $3, $4) RETURNING id`,
-          [storeId, scraped.conversationUrl, scraped.customerName, 'new']
+          `INSERT INTO conversations (store_id, etsy_conversation_url, customer_name, status,
+             subject_listing_url, subject_listing_image, subject_listing_title)
+           VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+          [
+            storeId,
+            scraped.conversationUrl,
+            scraped.customerName,
+            'new',
+            scraped.subjectListing?.url || null,
+            scraped.subjectListing?.image || null,
+            scraped.subjectListing?.title || null,
+          ]
         );
         conversationId = inserted.rows[0].id;
       }
@@ -70,12 +90,13 @@ export class SyncEngine {
       let newMessages = 0;
       for (const msg of scraped.messages) {
         const hash = this.hashMessage(msg, conversationId);
+        const imageUrlsVal = (msg.imageUrls && msg.imageUrls.length > 0) ? msg.imageUrls : null;
         const result = await client.query(
-          `INSERT INTO messages (conversation_id, sender_type, sender_name, message_text, sent_at, message_hash)
-           VALUES ($1, $2, $3, $4, $5, $6)
+          `INSERT INTO messages (conversation_id, sender_type, sender_name, message_text, sent_at, message_hash, image_urls)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)
            ON CONFLICT (message_hash) DO NOTHING
            RETURNING id`,
-          [conversationId, msg.senderType, msg.senderName, msg.messageText, msg.sentAt, hash]
+          [conversationId, msg.senderType, msg.senderName, msg.messageText, msg.sentAt, hash, imageUrlsVal]
         );
         if (result.rows.length > 0) newMessages++;
       }

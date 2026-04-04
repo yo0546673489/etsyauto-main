@@ -12,6 +12,9 @@ export interface MsgConversation {
   last_message_at: string | null;
   status: 'new' | 'open' | 'answered' | 'closed';
   ai_mode?: boolean;
+  subject_listing_url?: string | null;
+  subject_listing_image?: string | null;
+  subject_listing_title?: string | null;
 }
 
 export interface MsgCardData {

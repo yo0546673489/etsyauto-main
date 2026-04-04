@@ -304,6 +304,34 @@ export default function MessagesPage() {
 
               {/* Messages */}
               <div className="flex-1 overflow-y-auto py-4" style={{ backgroundColor: '#f5f7f6' }}>
+                {/* Subject Listing Card — product being discussed */}
+                {selectedConv.subject_listing_image && (
+                  <div className="mx-4 mb-3">
+                    <a
+                      href={selectedConv.subject_listing_url || '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 bg-white rounded-2xl border border-gray-100 p-3 shadow-sm hover:bg-gray-50 transition-colors"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <img
+                        src={selectedConv.subject_listing_image}
+                        alt="מוצר"
+                        className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border border-gray-100"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                      <div className="min-w-0 flex-1 text-right">
+                        <p className="text-[10px] text-gray-400 mb-0.5">השיחה עוסקת במוצר</p>
+                        <p className="text-xs font-semibold text-gray-800 line-clamp-2 leading-tight">
+                          {(selectedConv.subject_listing_title || 'מוצר Etsy')
+                            .replace(/ [-–|] Etsy$/, '').replace(/ on Etsy$/, '').trim()}
+                        </p>
+                        <p className="text-[10px] text-[#006d43] mt-0.5">etsy.com</p>
+                      </div>
+                    </a>
+                  </div>
+                )}
+
                 {msgLoading ? (
                   <div className="flex justify-center items-center h-full">
                     <div className="w-6 h-6 border-2 border-[#006d43] border-t-transparent rounded-full animate-spin" />
