@@ -5,6 +5,7 @@ Handles syncing ledger entries and payment details from Etsy
 import asyncio
 import json
 import logging
+import time
 from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional
 
@@ -471,7 +472,11 @@ def sync_ledger_entries(
         redis_client = get_redis_client()
         etsy_client = EtsyClient(db)
 
-        for shop in shops:
+        for i, shop in enumerate(shops):
+            # Stagger requests: 3s between shops to avoid Etsy rate limits.
+            if i > 0:
+                time.sleep(3)
+
             has_scope = _has_financial_scope(db, shop)
             if not has_scope:
                 logger.warning(f"sync_ledger: shop {shop.id} skipped (no billing_r/transactions_r scope)")
