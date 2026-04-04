@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import StartResearchForm from '@/components/new-store/StartResearchForm'
 
 export default function NewStorePage() {
@@ -28,8 +29,8 @@ export default function NewStorePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0f0d] text-white" dir="rtl">
-      <div className="max-w-2xl mx-auto px-6 py-16">
+    <DashboardLayout>
+      <div className="max-w-2xl mx-auto px-6 py-10" dir="rtl">
         <div className="mb-12">
           <h1 className="text-4xl font-bold text-[#006d43] mb-3">פתיחת חנות חדשה</h1>
           <p className="text-gray-400 text-lg">
@@ -65,6 +66,6 @@ export default function NewStorePage() {
           <p className="mt-4 text-gray-500 text-sm">זמן משוער: 30-60 דקות</p>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   )
 }

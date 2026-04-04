@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { DashboardLayout } from '@/components/layout/DashboardLayout'
 import { useResearchWebSocket } from '@/hooks/useResearchWebSocket'
 import ResearchProgress from '@/components/new-store/ResearchProgress'
 import ProductList from '@/components/new-store/ProductList'
@@ -21,7 +22,8 @@ export default function ResearchResultsPage({ params }: Props) {
   const hasProducts = products.length > 0
 
   return (
-    <div className="min-h-screen bg-[#0a0f0d] text-white" dir="rtl">
+    <DashboardLayout>
+    <div className="text-white" dir="rtl">
       <div className="max-w-6xl mx-auto px-6 py-10">
 
         <div className="flex items-center justify-between mb-8">
@@ -105,5 +107,6 @@ export default function ResearchResultsPage({ params }: Props) {
         />
       )}
     </div>
+    </DashboardLayout>
   )
 }
