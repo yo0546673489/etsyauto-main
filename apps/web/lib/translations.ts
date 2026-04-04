@@ -121,7 +121,6 @@ export const translations = {
     "dashboard.shop": "Store",
     "dashboard.orderNumber": "Order #",
     "dashboard.orderDate": "Date",
-    "dashboard.orderStatus": "Status",
     "dashboard.orderAmount": "Amount",
 
     // ── Help ──
@@ -834,7 +833,6 @@ export const translations = {
     "dashboard.shop": "חנות",
     "dashboard.orderNumber": "הזמנה #",
     "dashboard.orderDate": "תאריך",
-    "dashboard.orderStatus": "סטטוס",
     "dashboard.orderAmount": "סכום",
 
     // ── Help ──
