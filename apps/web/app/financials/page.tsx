@@ -65,7 +65,6 @@ import {
   CheckCircle,
   Download,
   Filter,
-  PieChart,
   BarChart3,
   Receipt,
   Banknote,
