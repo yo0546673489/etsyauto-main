@@ -5,7 +5,7 @@ Discount Rotation Tasks
 """
 import random
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from app.worker.celery_app import celery_app
 from app.core.database import SessionLocal
