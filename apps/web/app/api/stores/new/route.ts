@@ -6,7 +6,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const { price_min, price_max, category } = body
 
-    if (!price_min || !price_max) {
+    if (price_min == null || price_max == null || price_max === 0) {
       return NextResponse.json({ error: 'נא להזין טווח מחיר' }, { status: 400 })
     }
 
