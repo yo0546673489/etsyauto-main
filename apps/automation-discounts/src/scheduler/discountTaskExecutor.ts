@@ -132,8 +132,8 @@ export class DiscountTaskExecutor {
     // צור discount_task
     const taskResult = await this.platformPool.query(
       `INSERT INTO discount_tasks
-        (rule_id, shop_id, action, discount_value, scope, listing_ids, scheduled_for, status, started_at)
-       VALUES ($1, $2, 'apply_discount', $3, $4, $5, $6, 'pending', $7)
+        (rule_id, shop_id, action, discount_value, scope, listing_ids, scheduled_for, status, started_at, retry_count)
+       VALUES ($1, $2, 'apply_discount', $3, $4, $5, $6, 'pending', $7, 0)
        RETURNING id`,
       [
         rule.id, rule.shop_id, newPercent,
