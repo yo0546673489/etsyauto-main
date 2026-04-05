@@ -1,0 +1,28 @@
+============================================================
+הוראות לשליפת eRank cookies מ-Chrome:
+============================================================
+
+1. פתח את Chrome עם eRank (members.erank.com)
+2. לחץ F12 (DevTools)
+3. עבור ל-Console
+4. הדבק את הקוד הבא ולחץ Enter:
+
+------------------------------------------------------------
+(function(){
+  const d = document.cookie;
+  const xsrf = document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] || '';
+  const out = JSON.stringify({cookies: d, xsrf: xsrf}, null, 2);
+  const blob = new Blob([out], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'erank_cookies_export.json';
+  a.click();
+  console.log('Cookies exported!');
+})()
+------------------------------------------------------------
+
+5. הקובץ יורד אוטומטית כ-erank_cookies_export.json
+6. העבר אותו ל:
+   C:\Users\Administrator\Desktop\קלוד\מחקר\apps\new-store\erank_cookies_export.json
+
+============================================================

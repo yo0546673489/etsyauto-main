@@ -1,0 +1,34 @@
+{
+  "name": "research-engine",
+  "version": "1.0.0",
+  "description": "Profitly — Automated Etsy Niche Research Engine",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/index.ts",
+    "start": "node dist/index.js",
+    "start:scheduler": "ts-node src/scheduler/scheduler.ts",
+    "db:setup": "ts-node src/storage/setup-db.ts"
+  },
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "axios": "^1.6.2",
+    "better-sqlite3": "^12.8.0",
+    "bullmq": "^5.1.0",
+    "dotenv": "^16.3.1",
+    "express": "^5.2.1",
+    "ghost-cursor-playwright": "^1.0.2",
+    "ioredis": "^5.3.2",
+    "node-cron": "^3.0.3",
+    "pg": "^8.11.3",
+    "playwright": "^1.40.0",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/node-cron": "^3.0.11",
+    "@types/pg": "^8.10.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+}

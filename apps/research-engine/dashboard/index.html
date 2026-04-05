@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profitly Research Engine</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0a0e1a; --card: #111827; --card2: #1a2234; --border: #1e2d45;
+    --accent: #3b82f6; --green: #10b981; --yellow: #f59e0b; --red: #ef4444;
+    --purple: #8b5cf6; --text: #e2e8f0; --muted: #64748b;
+  }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; }
+  .header { background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-size: 20px; font-weight: 700; color: #fff; }
+  .logo span { color: var(--accent); }
+  .header-right { display: flex; gap: 10px; align-items: center; }
+  .status-badge { background: var(--card2); border: 1px solid var(--border); border-radius: 20px; padding: 4px 14px; font-size: 12px; color: var(--muted); }
+  .status-badge.live { border-color: var(--green); color: var(--green); }
+  .btn { background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 13px; font-weight: 600; }
+  .btn:hover { opacity: .85; }
+  .btn.outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; padding: 14px 24px; background: var(--card); border-bottom: 1px solid var(--border); }
+  .stat { text-align: center; }
+  .stat-val { font-size: 26px; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: .5px; }
+  .tabs { display: flex; padding: 0 24px; background: var(--card); border-bottom: 1px solid var(--border); }
+  .tab { padding: 12px 18px; cursor: pointer; color: var(--muted); font-weight: 500; border-bottom: 2px solid transparent; font-size: 13px; transition: color .2s; }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab:hover { color: var(--text); }
+  .content { padding: 20px 24px; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .section-title { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+  .section-sub { font-size: 12px; color: var(--muted); margin-bottom: 16px; }
+  .niches-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 14px; }
+  .niche-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .niche-card.hot { border-left: 3px solid var(--green); }
+  .niche-card.good { border-left: 3px solid var(--yellow); }
+  .niche-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .niche-name { font-size: 15px; font-weight: 700; }
+  .opp-badge { border-radius: 6px; padding: 3px 10px; font-size: 12px; font-weight: 700; }
+  .opp-badge.hot { background: rgba(16,185,129,.15); color: var(--green); }
+  .opp-badge.good { background: rgba(245,158,11,.15); color: var(--yellow); }
+  .opp-badge.fair { background: rgba(100,116,139,.1); color: var(--muted); }
+  .niche-metrics { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-bottom: 12px; }
+  .metric { background: var(--card2); border-radius: 6px; padding: 7px; text-align: center; }
+  .metric-val { font-size: 14px; font-weight: 700; }
+  .metric-label { font-size: 10px; color: var(--muted); margin-top: 1px; text-transform: uppercase; }
+  .top-kws { border-top: 1px solid var(--border); padding-top: 8px; }
+  .top-kws-title { font-size: 10px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; }
+  .kw-pill { display: inline-block; background: var(--card2); border-radius: 4px; padding: 2px 7px; font-size: 11px; margin: 2px; }
+  .kw-score { color: var(--accent); font-weight: 700; }
+  .kw-filters { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+  .filter-input, .filter-select { background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px 12px; font-size: 13px; outline: none; }
+  .filter-input:focus, .filter-select:focus { border-color: var(--accent); }
+  .filter-input { min-width: 200px; }
+  .filter-label { font-size: 12px; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { background: var(--card2); padding: 9px 12px; text-align: right; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; cursor: pointer; white-space: nowrap; }
+  thead th:hover { color: var(--text); }
+  tbody tr { border-bottom: 1px solid var(--border); }
+  tbody tr:hover { background: var(--card2); }
+  tbody td { padding: 9px 12px; }
+  .td-keyword { font-weight: 600; color: #fff; }
+  .tag { display: inline-block; border-radius: 4px; padding: 1px 7px; font-size: 11px; font-weight: 600; }
+  .tag.hot { background: rgba(16,185,129,.15); color: var(--green); }
+  .tag.warm { background: rgba(245,158,11,.15); color: var(--yellow); }
+  .tag.cold { background: rgba(100,116,139,.1); color: var(--muted); }
+  .tag.up { background: rgba(16,185,129,.1); color: var(--green); }
+  .tag.down { background: rgba(239,68,68,.1); color: var(--red); }
+  .price-tag { color: var(--green); font-weight: 700; }
+  .vol-large { color: var(--accent); font-weight: 600; }
+  .opp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+  .opp-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  .opp-rank { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .opp-keyword { font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 10px; }
+  .opp-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .opp-stat { background: var(--card2); border-radius: 6px; padding: 6px 10px; }
+  .opp-stat-val { font-size: 14px; font-weight: 700; }
+  .opp-stat-label { font-size: 10px; color: var(--muted); }
+  .loading { text-align: center; padding: 50px; color: var(--muted); }
+  .spinner { display: inline-block; width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: 10px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .empty { text-align: center; padding: 60px; color: var(--muted); }
+  .score-bar { width: 36px; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 4px; }
+  .score-fill { height: 100%; border-radius: 2px; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">Profitly <span>Research Engine</span></div>
+  <div class="header-right">
+    <span class="status-badge live" id="scraperBadge">● טוען...</span>
+    <button class="btn outline" onclick="loadAll()">🔄 רענן</button>
+    <button class="btn" onclick="exportCSV()">📥 CSV</button>
+  </div>
+</div>
+
+<div class="stats-bar">
+  <div class="stat"><div class="stat-val" id="s-total">–</div><div class="stat-label">סה"כ Keywords</div></div>
+  <div class="stat"><div class="stat-val" id="s-score90">–</div><div class="stat-label">Score 90+</div></div>
+  <div class="stat"><div class="stat-val" id="s-avgPrice">–</div><div class="stat-label">מחיר ממוצע</div></div>
+  <div class="stat"><div class="stat-val" id="s-maxPrice">–</div><div class="stat-label">מחיר מקסימלי</div></div>
+  <div class="stat"><div class="stat-val" id="s-updated">–</div><div class="stat-label">עדכון אחרון</div></div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('niches')">🏆 נישות</div>
+  <div class="tab" onclick="showTab('keywords')">🔑 Keywords</div>
+  <div class="tab" onclick="showTab('opportunities')">💎 הזדמנויות Top 50</div>
+  <div class="tab" onclick="showTab('highprice')">💰 מוצרים $50+</div>
+</div>
+
+<div class="content">
+
+  <div class="page active" id="page-niches">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div>
+        <div class="section-title">🏆 ניתוח נישות</div>
+        <div class="section-sub">ממוין לפי ציון הזדמנות · ללא מוצרים מותאמים אישית</div>
+      </div>
+      <span style="background:rgba(139,92,246,.15);color:#8b5cf6;border-radius:4px;padding:2px 10px;font-size:11px;font-weight:600;">✓ ללא Personalized</span>
+    </div>
+    <div id="nicheCards" class="niches-grid"><div class="loading"><div class="spinner"></div><div>טוען...</div></div></div>
+  </div>
+
+  <div class="page" id="page-keywords">
+    <div class="section-title">🔑 כל הKeywords</div>
+    <div class="kw-filters">
+      <input class="filter-input" id="kwSearch" placeholder="חפש keyword..." oninput="filterKeywords()">
+      <select class="filter-select" id="kwSort" onchange="filterKeywords()">
+        <option value="opportunity">הזדמנות</option>
+        <option value="score">Score</option>
+        <option value="volume">Volume</option>
+        <option value="competition">תחרות (נמוכה)</option>
+        <option value="price">מחיר</option>
+      </select>
+      <select class="filter-select" id="kwMinScore" onchange="filterKeywords()">
+        <option value="0">כל הScores</option>
+        <option value="80">Score 80+</option>
+        <option value="90">Score 90+</option>
+        <option value="95">Score 95+</option>
+      </select>
+      <select class="filter-select" id="kwMaxComp" onchange="filterKeywords()">
+        <option value="9999999">כל התחרות</option>
+        <option value="200000">תחרות &lt; 200K</option>
+        <option value="100000">תחרות &lt; 100K</option>
+        <option value="50000">תחרות &lt; 50K</option>
+        <option value="20000">תחרות &lt; 20K</option>
+      </select>
+      <span class="filter-label" id="kwCount">0 keywords</span>
+    </div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead><tr>
+          <th onclick="sortCol('keyword')">Keyword</th>
+          <th onclick="sortCol('keyword_score')">Score ↕</th>
+          <th onclick="sortCol('google_volume')">Volume/חודש ↕</th>
+          <th onclick="sortCol('competing_listings')">תחרות ↕</th>
+          <th onclick="sortCol('avg_price')">מחיר ממוצע ↕</th>
+          <th onclick="sortCol('avg_conversion')">המרה ↕</th>
+          <th>Trend Q</th>
+          <th>Trend Y</th>
+          <th>הזדמנות ↕</th>
+        </tr></thead>
+        <tbody id="kwTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="page" id="page-opportunities">
+    <div class="section-title">💎 Top 50 הזדמנויות</div>
+    <div class="section-sub">Volume ÷ Competition × Score × Conversion · ללא מוצרים מותאמים אישית</div>
+    <div id="oppCards" class="opp-grid"><div class="loading"><div class="spinner"></div><div>טוען...</div></div></div>
+  </div>
+
+  <div class="page" id="page-highprice">
+    <div class="section-title">💰 מוצרים $50+ — פוטנציאל גבוה</div>
+    <div class="section-sub">ממוין לפי מחיר ממוצע · כולל הערכת הכנסה חודשית</div>
+    <div id="highPriceContent"><div class="loading"><div class="spinner"></div><div>טוען...</div></div></div>
+  </div>
+
+</div>
+
+<script>
+let ALL_DATA = [];
+let sortState = { field: 'opportunity', dir: -1 };
+
+async function loadAll() {
+  await Promise.all([loadStats(), loadKeywords()]);
+  renderNiches();
+  renderOpportunities();
+  renderHighPrice();
+}
+
+async function loadStats() {
+  try {
+    const r = await fetch('/api/stats').then(r => r.json());
+    document.getElementById('s-total').textContent = r.total_keywords || '–';
+    document.getElementById('s-score90').textContent = r.score_90plus || '–';
+    document.getElementById('s-avgPrice').textContent = r.avg_price ? '$' + r.avg_price : '–';
+    document.getElementById('s-maxPrice').textContent = r.max_price ? '$' + Math.round(r.max_price) : '–';
+    const d = r.last_updated ? new Date(r.last_updated).toLocaleTimeString('he') : '–';
+    document.getElementById('s-updated').textContent = d;
+    const badge = document.getElementById('scraperBadge');
+    if (r.scraperStatus && r.scraperStatus !== 'idle') {
+      badge.textContent = '⚡ ' + r.scraperStatus;
+      badge.className = 'status-badge live';
+    } else {
+      badge.textContent = '✓ ' + (r.total_keywords||0) + ' keywords';
+      badge.className = 'status-badge live';
+    }
+  } catch(e) {}
+}
+
+async function loadKeywords() {
+  try {
+    ALL_DATA = await fetch('/api/raw-keywords').then(r => r.json());
+    filterKeywords();
+  } catch(e) {}
+}
+
+function filterKeywords() {
+  const search = document.getElementById('kwSearch').value.toLowerCase();
+  const sortField = document.getElementById('kwSort').value;
+  const minScore = parseInt(document.getElementById('kwMinScore').value);
+  const maxComp = parseInt(document.getElementById('kwMaxComp').value);
+
+  let data = ALL_DATA.filter(r => {
+    if (search && !r.keyword.toLowerCase().includes(search)) return false;
+    if ((r.keyword_score||0) < minScore) return false;
+    if ((r.competing_listings||0) > maxComp) return false;
+    return true;
+  });
+
+  data.sort((a,b) => {
+    if (sortField==='opportunity') { const oA=opp(a),oB=opp(b); return oB-oA; }
+    if (sortField==='score') return (b.keyword_score||0)-(a.keyword_score||0);
+    if (sortField==='volume') return (b.google_volume||0)-(a.google_volume||0);
+    if (sortField==='competition') return (a.competing_listings||0)-(b.competing_listings||0);
+    if (sortField==='price') return parseFloat(b.avg_price||0)-parseFloat(a.avg_price||0);
+    return 0;
+  });
+
+  document.getElementById('kwCount').textContent = data.length + ' keywords';
+  renderTable(data.slice(0,300));
+}
+
+function sortCol(f) {
+  document.getElementById('kwSort').value = f==='keyword_score'?'score':f==='google_volume'?'volume':f==='competing_listings'?'competition':f==='avg_price'?'price':'opportunity';
+  filterKeywords();
+}
+
+function opp(r) {
+  return ((r.google_volume||0)/Math.max(r.competing_listings||1,1))*(r.keyword_score||0)*parseFloat(r.avg_conversion||0)*1000;
+}
+
+function renderTable(data) {
+  const tbody = document.getElementById('kwTableBody');
+  if (!data.length) { tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--muted)">לא נמצאו תוצאות</td></tr>'; return; }
+  tbody.innerHTML = data.map(r => {
+    const o = opp(r);
+    const os = o>10000?(o/1000).toFixed(0)+'K':Math.round(o).toString();
+    const sc = r.keyword_score>=90?'#10b981':r.keyword_score>=75?'#f59e0b':'#64748b';
+    const oc = o>5000?'hot':o>1000?'warm':'cold';
+    return `<tr>
+      <td class="td-keyword">${r.keyword}</td>
+      <td><div class="score-bar"><div class="score-fill" style="width:${r.keyword_score||0}%;background:${sc}"></div></div><span style="color:${sc};font-weight:700">${r.keyword_score||'–'}</span></td>
+      <td><span class="${(r.google_volume||0)>100000?'vol-large':''}">${fn(r.google_volume)}</span></td>
+      <td>${fn(r.competing_listings)}</td>
+      <td>${r.avg_price?'<span class="price-tag">$'+Math.round(r.avg_price)+'</span>':'–'}</td>
+      <td>${r.avg_conversion?(parseFloat(r.avg_conversion)*100).toFixed(1)+'%':'–'}</td>
+      <td>${tt(r.google_change_qr)}</td>
+      <td>${tt(r.google_change_yr)}</td>
+      <td><span class="tag ${oc}">${os}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+function tt(v) {
+  if (!v&&v!==0) return '–';
+  const n=parseFloat(v);
+  if(n>20) return `<span class="tag up">↑${n.toFixed(0)}%</span>`;
+  if(n<-20) return `<span class="tag down">↓${Math.abs(n).toFixed(0)}%</span>`;
+  return `<span style="color:var(--muted)">${n.toFixed(0)}%</span>`;
+}
+
+function fn(n) {
+  if(!n) return '–';
+  if(n>=1000000) return (n/1000000).toFixed(1)+'M';
+  if(n>=1000) return (n/1000).toFixed(0)+'K';
+  return n.toString();
+}
+
+function renderNiches() {
+  const container = document.getElementById('nicheCards');
+  if (!ALL_DATA.length) return;
+  const niches = computeNiches(ALL_DATA);
+  if (!niches.length) { container.innerHTML = '<div class="empty">אין נתונים עדיין — הסריקה רצה</div>'; return; }
+  container.innerHTML = niches.map(n => {
+    const lv = n.opp>5000?'hot':n.opp>1000?'good':'fair';
+    const badge = n.opp>5000?'🔥 חם מאוד':n.opp>1000?'⭐ טוב':'• סביר';
+    return `<div class="niche-card ${lv}">
+      <div class="niche-header"><div class="niche-name">${n.name}</div><span class="opp-badge ${lv}">${badge}</span></div>
+      <div class="niche-metrics">
+        <div class="metric"><div class="metric-val" style="color:var(--accent)">${n.avgScore}</div><div class="metric-label">Avg Score</div></div>
+        <div class="metric"><div class="metric-val" style="color:var(--green)">${fn(n.maxVol)}</div><div class="metric-label">Max Volume</div></div>
+        <div class="metric"><div class="metric-val" style="color:var(--yellow)">${n.avgPrice?'$'+n.avgPrice:'–'}</div><div class="metric-label">מחיר ממוצע</div></div>
+        <div class="metric"><div class="metric-val">${fn(n.minComp)}</div><div class="metric-label">תחרות מינ'</div></div>
+        <div class="metric"><div class="metric-val" style="color:var(--purple)">${n.avgConv?n.avgConv+'%':'–'}</div><div class="metric-label">המרה</div></div>
+        <div class="metric"><div class="metric-val">${n.count}</div><div class="metric-label">Keywords</div></div>
+      </div>
+      <div class="top-kws"><div class="top-kws-title">Top Keywords</div>
+        ${n.top.map(k=>`<span class="kw-pill">${k.keyword} <span class="kw-score">${k.score}</span></span>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderOpportunities() {
+  const container = document.getElementById('oppCards');
+  if (!ALL_DATA.length) return;
+  const NO = ['personalized','custom ','custom-','custom name'];
+  const top = ALL_DATA
+    .filter(r => !NO.some(p=>r.keyword.toLowerCase().includes(p)))
+    .map(r => ({...r, opp:opp(r)}))
+    .sort((a,b)=>b.opp-a.opp).slice(0,50);
+  container.innerHTML = top.map((r,i) => `
+    <div class="opp-card">
+      <div class="opp-rank">#${i+1} · Score ${r.keyword_score}</div>
+      <div class="opp-keyword">${r.keyword}</div>
+      <div class="opp-stats">
+        <div class="opp-stat"><div class="opp-stat-val" style="color:var(--accent)">${fn(r.google_volume)}</div><div class="opp-stat-label">חיפושים/חודש</div></div>
+        <div class="opp-stat"><div class="opp-stat-val">${fn(r.competing_listings)}</div><div class="opp-stat-label">מתחרים</div></div>
+        <div class="opp-stat"><div class="opp-stat-val" style="color:var(--green)">${r.avg_price?'$'+Math.round(r.avg_price):'–'}</div><div class="opp-stat-label">מחיר ממוצע</div></div>
+        <div class="opp-stat"><div class="opp-stat-val" style="color:var(--yellow)">${r.avg_conversion?(parseFloat(r.avg_conversion)*100).toFixed(1)+'%':'–'}</div><div class="opp-stat-label">המרה</div></div>
+      </div>
+    </div>`).join('');
+}
+
+function renderHighPrice() {
+  const container = document.getElementById('highPriceContent');
+  if (!ALL_DATA.length) return;
+  const NO = ['personalized','custom ','custom-','custom name'];
+  const hp = ALL_DATA
+    .filter(r => !NO.some(p=>r.keyword.toLowerCase().includes(p)) && parseFloat(r.avg_price||0)>=50)
+    .sort((a,b)=>parseFloat(b.avg_price||0)-parseFloat(a.avg_price||0));
+  if (!hp.length) { container.innerHTML = '<div class="empty">הסריקה הגדולה עדיין רצה — כאן יוצגו מוצרים מעל $50 כשיגיעו הנתונים</div>'; return; }
+  container.innerHTML = `<div style="overflow-x:auto;"><table>
+    <thead><tr>
+      <th>Keyword</th><th>מחיר ממוצע</th><th>Score</th><th>Volume</th>
+      <th>תחרות</th><th>המרה</th><th>Trend Q</th><th>Trend Y</th><th>הערכת הכנסה/חודש</th>
+    </tr></thead>
+    <tbody>${hp.slice(0,150).map(r => {
+      const price=parseFloat(r.avg_price||0);
+      const conv=parseFloat(r.avg_conversion||0);
+      const est=Math.round((r.google_volume||0)*0.05/Math.max((r.competing_listings||1)/100,1)*conv*price);
+      return `<tr>
+        <td class="td-keyword">${r.keyword}</td>
+        <td><span class="price-tag" style="font-size:16px">$${Math.round(price)}</span></td>
+        <td><span style="color:${r.keyword_score>=80?'var(--green)':'var(--yellow)'};font-weight:700">${r.keyword_score||'–'}</span></td>
+        <td>${fn(r.google_volume)}</td><td>${fn(r.competing_listings)}</td>
+        <td>${r.avg_conversion?(parseFloat(r.avg_conversion)*100).toFixed(1)+'%':'–'}</td>
+        <td>${tt(r.google_change_qr)}</td><td>${tt(r.google_change_yr)}</td>
+        <td>${est>0?'<span style="color:var(--green)">~$'+fn(est)+'</span>':'–'}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+function computeNiches(rows) {
+  const MAP = {
+    '🏠 Furniture & Home': ['shelf','table','bench','bookcase','cabinet','mirror','rack','stand','ottoman','headboard','bed frame','ladder'],
+    '🖼️ Wall Art': ['wall art','canvas','painting','print','poster','tapestry','metal wall','neon sign','stained glass'],
+    '🏺 Pottery & Ceramics': ['pottery','ceramic','stoneware','clay','raku','terracotta'],
+    '🧶 Macrame & Fiber': ['macrame','woven','weaving','fiber art','hammock','chunky knit'],
+    '💎 Crystals': ['crystal','amethyst','quartz','selenite','obsidian','gemstone','geode'],
+    '💍 Fine Jewelry': ['gold ring','silver ring','diamond','engagement','bracelet','anklet','necklace','locket','turquoise','moonstone','opal'],
+    '👜 Leather Goods': ['leather bag','leather tote','leather backpack','leather wallet','leather belt','leather journal'],
+    '🪵 Woodworking': ['cutting board','charcuterie','wooden tray','wooden bowl','wooden box','wood sign','chess','butcher block'],
+    '💡 Lighting': ['pendant light','chandelier','lamp','wall sconce','salt lamp','mushroom lamp'],
+    '🧺 Rugs & Textiles': ['rug','blanket','pillow','throw','cushion','yoga mat'],
+    '🌿 Plants & Garden': ['terrarium','bonsai','kokedama','planter','garden','wreath'],
+    '🎵 Musical Instruments': ['handpan','tongue drum','kalimba','ukulele','drum','singing bowl','wind chime','harp','ocarina'],
+    '⌨️ Tech Accessories': ['mechanical keyboard','laptop stand','mouse pad','desk mat','monitor stand'],
+    '🛁 Bath & Spa': ['bath','spa','soap','scrub','shower steamer','candle set','diffuser','perfume','body oil'],
+    '🏺 Vintage': ['vintage jewelry','antique','estate jewelry','retro','vintage watch','vintage camera'],
+    '🌳 Outdoor': ['garden sculpture','bird bath','fountain','fire pit','garden bench'],
+    '🎨 Art Objects': ['sculpture','glass art','fused glass','figurine','resin art'],
+    '📱 Digital': ['notion template','digital planner','svg','printable','canva template','astrology chart','tarot'],
+    '💒 Wedding': ['wedding arch','wedding backdrop','centerpiece','flower wall','aisle runner'],
+    '🐾 Pet Products': ['cat tree','cat bed','dog bed','fish tank'],
+    '🔮 Spiritual': ['tarot','oracle card','astrology','crystal set','altar','incense'],
+    '🍯 Beauty (Handmade)': ['body scrub','lip balm','bath bomb','beeswax candle','handmade soap','bath salts'],
+  };
+  const niches = [];
+  for (const [name, keys] of Object.entries(MAP)) {
+    const m = rows.filter(r => keys.some(k=>(r.keyword||'').toLowerCase().includes(k)));
+    if (m.length < 2) continue;
+    const avgScore = m.reduce((s,r)=>s+(r.keyword_score||0),0)/m.length;
+    const maxVol = Math.max(...m.map(r=>r.google_volume||0));
+    const comps = m.filter(r=>(r.competing_listings||0)>0).map(r=>r.competing_listings);
+    const minComp = comps.length ? Math.min(...comps) : null;
+    const prices = m.filter(r=>parseFloat(r.avg_price||0)>0);
+    const avgPrice = prices.length ? prices.reduce((s,r)=>s+parseFloat(r.avg_price),0)/prices.length : 0;
+    const convs = m.filter(r=>parseFloat(r.avg_conversion||0)>0);
+    const avgConv = convs.length ? convs.reduce((s,r)=>s+parseFloat(r.avg_conversion),0)/convs.length : 0;
+    const o = Math.round((maxVol/Math.max(minComp||1,1))*avgScore*avgConv*1000);
+    const top = [...m].sort((a,b)=>{const oA=opp(a),oB=opp(b);return oB-oA;}).slice(0,5).map(r=>({keyword:r.keyword,score:r.keyword_score}));
+    niches.push({ name, count:m.length, avgScore:avgScore.toFixed(1), maxVol, minComp, avgPrice:avgPrice?avgPrice.toFixed(0):null, avgConv:avgConv?(avgConv*100).toFixed(1):null, opp:o, top });
+  }
+  return niches.sort((a,b)=>b.opp-a.opp);
+}
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const tabs=['niches','keywords','opportunities','highprice'];
+  document.querySelectorAll('.tab')[tabs.indexOf(name)].classList.add('active');
+  document.getElementById('page-'+name).classList.add('active');
+}
+
+function exportCSV() {
+  const h=['keyword','keyword_score','google_volume','competing_listings','avg_price','avg_conversion','google_change_qr','google_change_yr'];
+  const rows=[h.join(','),...ALL_DATA.map(r=>h.map(k=>r[k]||'').join(','))];
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv'}));
+  a.download='profitly_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
+
+setInterval(async()=>{ const r=await fetch('/api/stats').then(r=>r.json()).catch(()=>({})); if(r.scraperStatus&&r.scraperStatus!=='idle'){await loadKeywords();renderNiches();renderOpportunities();renderHighPrice();} await loadStats(); }, 30000);
+
+loadAll();
+</script>
+</body>
+</html>

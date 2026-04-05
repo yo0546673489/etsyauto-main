@@ -1,0 +1,2 @@
+VERIFIER=0H7Rg3nQ1emE0pcBGu1zTRNdJYoNrlYQ7OkgT0ojmXI
+URL=https://www.etsy.com/oauth/connect?response_type=code&client_id=2cervnvhc9e9kkrhyenwu09u&redirect_uri=https%3A%2F%2Fwww.etsy.com%2Foauth%2Fconnect&scope=listings_r&state=5uET4BkY9htQ6Dhw7ulq-w&code_challenge=HSt3ZzppSpi6Z_wf1OEg14Ocn1-OA48vEYmIzN2XyHA&code_challenge_method=S256

@@ -1,0 +1,23 @@
+# סודות — אסור להעלות!
+.env
+*.env
+sessions/*.db
+data/cookies_raw.db
+
+# תוצאות ולוגים
+*.log
+logs/
+
+# תלויות
+node_modules/
+__pycache__/
+*.pyc
+.next/
+
+# Windows
+desktop.ini
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

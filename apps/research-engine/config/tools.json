@@ -1,0 +1,68 @@
+{
+  "tools": {
+    "erank": {
+      "name": "eRank",
+      "url": "https://erank.com",
+      "profile_env": "ERANK_PROFILE_ID",
+      "daily_limit": 45,
+      "manual_reserve": 5,
+      "features": ["top_shops", "keyword_tool", "trend_buzz"]
+    },
+    "koalanda": {
+      "name": "Koalanda",
+      "url": "https://koalanda.pro",
+      "profile_env": "KOALANDA_PROFILE_ID",
+      "daily_limit": 10,
+      "manual_reserve": 0,
+      "features": ["top_shops", "top_products", "keyword_score"]
+    },
+    "alura": {
+      "name": "Alura",
+      "url": "https://www.alura.io",
+      "profile_env": "ALURA_PROFILE_ID",
+      "daily_limit": 15,
+      "manual_reserve": 0,
+      "features": ["product_research", "keyword_finder", "shop_analysis"]
+    },
+    "everbee": {
+      "name": "EverBee",
+      "url": "https://everbee.io",
+      "profile_env": "EVERBEE_PROFILE_ID",
+      "monthly_limit": 10,
+      "daily_limit": 0.3,
+      "manual_reserve": 0,
+      "features": ["product_analytics"]
+    },
+    "ehunt": {
+      "name": "EHunt",
+      "url": "https://ehunt.ai",
+      "profile_env": "EHUNT_PROFILE_ID",
+      "daily_limit": 8,
+      "manual_reserve": 2,
+      "features": ["product_research", "shop_analyzer", "keyword_tool"]
+    },
+    "apify": {
+      "name": "Apify",
+      "url": "https://api.apify.com",
+      "monthly_budget_usd": 5,
+      "daily_credits": 4.5,
+      "features": ["etsy_scraper"]
+    },
+    "etsy_api": {
+      "name": "Etsy API",
+      "daily_limit": 5000,
+      "qps": 150,
+      "features": ["shops", "listings", "tags"]
+    }
+  },
+  "anti_detection": {
+    "random_delay_between_actions": { "min_ms": 2000, "max_ms": 8000 },
+    "random_delay_between_searches": { "min_ms": 30000, "max_ms": 120000 },
+    "random_break_chance": 0.10,
+    "random_break_duration": { "min_ms": 180000, "max_ms": 600000 },
+    "human_behavior": true,
+    "bezier_mouse": true,
+    "typo_rate": 0.03,
+    "gradual_scroll": true
+  }
+}

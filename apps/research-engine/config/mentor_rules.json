@@ -1,0 +1,67 @@
+{
+  "_comment": "כללי המנטור פלא אטסי — לא לשנות ידנית",
+
+  "niche_validation": {
+    "min_shops_selling_same_sub_niche": 3,
+    "ideal_shops_selling_same_sub_niche": 5,
+    "max_zeros_on_page_alura": 10,
+    "max_different_shops_first_page": 15,
+    "acceptable_max_shops_first_page": 20,
+    "min_leading_products_on_page": 5,
+    "ideal_leading_products_on_page": 8,
+    "min_monthly_sales_leading_product": 124,
+    "min_products_with_10plus_sales": 10,
+    "young_shop_max_age_days": 60,
+    "old_shop_min_age_days": 365
+  },
+
+  "price_range": {
+    "min_price_ils": 50,
+    "recommended_min_ils": 50,
+    "recommended_max_ils": 150
+  },
+
+  "tags": {
+    "count_per_listing": 13,
+    "max_chars_per_tag": 20,
+    "min_search_volume": 1000,
+    "ideal_search_volume": 5000,
+    "max_competition": 1000000,
+    "ideal_max_competition": 21000,
+    "min_conversion_rate_short_tag": 2.5,
+    "min_conversion_rate_long_tag": 1.25,
+    "min_alura_score": 60,
+    "ideal_alura_score": 70,
+    "min_tags_in_bank": 30,
+    "ideal_tags_in_bank": 40,
+    "shared_tags_between_products_pct": 60
+  },
+
+  "title": {
+    "max_chars": 140,
+    "ideal_chars_min": 110,
+    "ideal_chars_max": 140,
+    "max_words": 15,
+    "ideal_words_min": 10,
+    "ideal_words_max": 14,
+    "rule": "מילת מפתח חזקה חייבת להיות ראשונה בכותרת"
+  },
+
+  "upload_schedule": {
+    "week_1_products_per_day": 1,
+    "week_2_products_per_day": 2
+  },
+
+  "forbidden_niches": [
+    "handmade",
+    "vintage",
+    "personalization",
+    "jewelry",
+    "custom"
+  ],
+
+  "income_targets": {
+    "min_income_3_4_months_ils": 8000,
+    "ideal_income_3_4_months_ils": 20000
+  }
+}

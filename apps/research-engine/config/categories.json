@@ -1,0 +1,44 @@
+{
+  "categories": [
+    {
+      "name": "Art & Collectibles",
+      "etsy_id": "art_collectibles",
+      "subcategories": ["Drawing & Illustration", "Prints", "Photography"]
+    },
+    {
+      "name": "Jewelry",
+      "etsy_id": "jewelry",
+      "subcategories": ["Necklaces", "Rings", "Earrings", "Bracelets"]
+    },
+    {
+      "name": "Home & Living",
+      "etsy_id": "home_living",
+      "subcategories": ["Home Decor", "Wall Decor", "Kitchen & Dining"]
+    },
+    {
+      "name": "Wedding",
+      "etsy_id": "weddings",
+      "subcategories": ["Invitations", "Decorations", "Gifts"]
+    },
+    {
+      "name": "Clothing",
+      "etsy_id": "clothing",
+      "subcategories": ["T-Shirts", "Dresses", "Accessories"]
+    },
+    {
+      "name": "Digital Downloads",
+      "etsy_id": "digital_downloads",
+      "subcategories": ["Printable Art", "Planners", "SVG Files", "Templates"]
+    },
+    {
+      "name": "Personalized",
+      "etsy_id": "personalized",
+      "subcategories": ["Custom Portraits", "Name Jewelry", "Engraved Items"]
+    },
+    {
+      "name": "Baby & Kids",
+      "etsy_id": "baby_kids",
+      "subcategories": ["Nursery Decor", "Kids Clothing", "Toys"]
+    }
+  ]
+}
