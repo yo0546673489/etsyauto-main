@@ -83,10 +83,7 @@ export default function LandingPage() {
         transition={{ duration: 0.6 }}
       >
         <div className="flex items-center gap-2">
-          <Package className="w-8 h-8 text-blue-600" />
-          <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Profix
-          </span>
+          <img src="/logo.png" alt="Profix" className="h-9 w-auto" />
         </div>
         <div className="flex items-center gap-6">
           <a href="#features" className="text-gray-600 hover:text-gray-900 transition-colors">Features</a>
@@ -720,8 +717,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
               <div className="flex items-center gap-2 mb-4">
-                <Package className="w-6 h-6 text-blue-600" />
-                <span className="text-lg font-bold text-gray-900">Profix</span>
+                <img src="/logo.png" alt="Profix" className="h-8 w-auto" />
               </div>
               <p className="text-gray-600 text-sm">
                 Smart automation for modern Etsy sellers.

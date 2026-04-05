@@ -73,13 +73,8 @@ export default function AuthLayout({ children, mode }: AuthLayoutProps) {
         <div className="relative z-10 flex flex-col w-full p-10">
           {/* Logo & Back Button */}
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center">
-                <span className="text-[var(--primary)] font-bold text-xl">P</span>
-              </div>
-              <span className="text-white font-bold text-xl tracking-tight">
-                Profix
-              </span>
+            <Link href="/" className="flex items-center">
+              <img src="/logo.png" alt="Profix" className="h-10 w-auto brightness-0 invert" />
             </Link>
             <Link
               href="/"
@@ -138,11 +133,8 @@ export default function AuthLayout({ children, mode }: AuthLayoutProps) {
       <div className="flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-12 bg-[var(--card-bg)]">
         <div className="w-full max-w-[440px] mx-auto">
           {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center gap-3 mb-10">
-            <div className="w-10 h-10 rounded-xl bg-[var(--primary)] flex items-center justify-center">
-              <span className="text-white font-bold text-xl">P</span>
-            </div>
-            <span className="text-[var(--text-primary)] font-bold text-xl">Profix</span>
+          <div className="lg:hidden flex items-center mb-10">
+            <img src="/logo.png" alt="Profix" className="h-10 w-auto" />
           </div>
 
           {/* Header with mode toggle */}
