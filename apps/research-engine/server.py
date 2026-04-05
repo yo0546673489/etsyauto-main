@@ -24,7 +24,7 @@ from content.description_generator import DescriptionGenerator
 from images.image_downloader import ImageDownloader
 from images.photoroom_processor import PhotoroomProcessor
 
-app = FastAPI(title="Profitly New Store Engine")
+app = FastAPI(title="Profix New Store Engine")
 ws_manager = WebSocketManager()
 
 # CORS — רק שרת Linux מורשה

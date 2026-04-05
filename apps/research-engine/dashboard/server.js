@@ -1,5 +1,5 @@
 /**
- * Profitly Research Dashboard - Express Server
+ * Profix Research Dashboard - Express Server
  */
 const PROJ = 'C:\\Users\\Administrator\\Desktop\\\u05E7\u05DC\u05D5\u05D3\\\u05DE\u05D7\u05E7\u05E8';
 process.chdir(PROJ);
@@ -262,5 +262,5 @@ function computeNiches(rows) {
 }
 
 app.listen(PORT, () => {
-  console.log(`\n🚀 Profitly Research Dashboard: http://localhost:${PORT}\n`);
+  console.log(`\n🚀 Profix Research Dashboard: http://localhost:${PORT}\n`);
 });

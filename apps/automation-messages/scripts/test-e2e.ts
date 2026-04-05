@@ -1,5 +1,5 @@
 /**
- * End-to-end test: Gmail IMAP → AdsPower → Etsy scrape → DB → Profitly
+ * End-to-end test: Gmail IMAP → AdsPower → Etsy scrape → DB → Profix
  * Usage: npx tsx scripts/test-e2e.ts
  */
 import { ImapFlow } from 'imapflow';
@@ -14,7 +14,7 @@ import { AdsPowerController } from '../src/adspower/controller';
 import { EtsyScraper } from '../src/browser/etsyScraper';
 import { ListingScraper, extractListingUrls } from '../src/browser/listingScraper';
 import { SyncEngine } from '../src/sync/engine';
-import { ProfitlyNotifier } from '../src/integrations/profitly';
+import { ProfixNotifier } from '../src/integrations/profitly';
 import { HumanBehavior } from '../src/browser/humanBehavior';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
@@ -208,10 +208,10 @@ async function saveToDb(storeId: number, conversation: any) {
   return null;
 }
 
-// ─── STEP 6: Notify Profitly ────────────────────────────────────────────────
-async function notifyProfitly(store: any, dbRow: any, conversation: any) {
-  console.log('\n[6] Notifying Profitly API...');
-  const notifier = new ProfitlyNotifier();
+// ─── STEP 6: Notify Profix ────────────────────────────────────────────────
+async function notifyProfix(store: any, dbRow: any, conversation: any) {
+  console.log('\n[6] Notifying Profix API...');
+  const notifier = new ProfixNotifier();
 
   const payload = {
     store_id: store.id,
@@ -230,14 +230,14 @@ async function notifyProfitly(store: any, dbRow: any, conversation: any) {
   };
 
   await notifier.notifyConversation(payload);
-  console.log(`  Payload sent to Profitly (${payload.messages.length} messages)`);
-  console.log('  (Profitly is at localhost:8000 — if not running, this is a warning not an error)');
+  console.log(`  Payload sent to Profix (${payload.messages.length} messages)`);
+  console.log('  (Profix is at localhost:8000 — if not running, this is a warning not an error)');
   return payload;
 }
 
 // ─── MAIN ────────────────────────────────────────────────────────────────────
 async function main() {
-  console.log('=== E2E Test: Gmail → AdsPower → Etsy → DB → Profitly ===\n');
+  console.log('=== E2E Test: Gmail → AdsPower → Etsy → DB → Profix ===\n');
 
   let browser: any = null;
   let adspower: any = null;
@@ -279,8 +279,8 @@ async function main() {
     // Step 5: DB
     const dbRow = await saveToDb(store.id, conversation);
 
-    // Step 6: Profitly
-    await notifyProfitly(store, dbRow, conversation);
+    // Step 6: Profix
+    await notifyProfix(store, dbRow, conversation);
 
     console.log('\n=== ✓ E2E Test PASSED ===');
     console.log(`Store: ${store.store_number} (${store.store_email})`);

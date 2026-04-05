@@ -14,7 +14,7 @@ const HTML = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>לוח בקרה — אוטומציה Profitly</title>
+<title>לוח בקרה — אוטומציה Profix</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { font-family: 'Segoe UI', Arial, sans-serif; background: #f0f4f8; color: #1a1a2e; min-height: 100vh; }
@@ -182,7 +182,7 @@ const HTML = `<!DOCTYPE html>
 <header>
   <div>
     <h1>🤖 לוח בקרה — אוטומציה</h1>
-    <div class="subtitle">Profitly · מצב מערכת בזמן אמת</div>
+    <div class="subtitle">Profix · מצב מערכת בזמן אמת</div>
   </div>
   <button class="refresh-btn" id="refreshBtn" onclick="loadData(true)">🔄 רענן</button>
 </header>

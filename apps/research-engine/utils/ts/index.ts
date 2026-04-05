@@ -12,7 +12,7 @@ const phase = args.find(a => a.startsWith('--phase'))?.replace('--phase', '') ??
 const runNow = args.includes('--now');
 
 async function main() {
-  log.info('=== Profitly Research Engine ===');
+  log.info('=== Profix Research Engine ===');
 
   const connected = await testConnection();
   if (!connected) {

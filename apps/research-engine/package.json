@@ -1,7 +1,7 @@
 {
   "name": "research-engine",
   "version": "1.0.0",
-  "description": "Profitly — Automated Etsy Niche Research Engine",
+  "description": "Profix — Automated Etsy Niche Research Engine",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
