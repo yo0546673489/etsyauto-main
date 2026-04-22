@@ -314,123 +314,58 @@ class FinancialService:
         now = datetime.now(timezone.utc)
 
         def _available_for_one_shop(tid: int, sid: int) -> int:
-            """Compute available_for_deposit (cents) for a single shop.
+            """Compute available_for_deposit (cents) for a single shop — STRICT.
 
-            Logic: everything that arrived SINCE the last bank deposit (DISBURSE2/DISBURSE)
-            is still in the current payout cycle and not yet available.
-            available = balance - sum(entries since last deposit)
+            Etsy does not expose "available for deposit" via API, so we infer it
+            from disbursement history. A shop's balance is only "available" when
+            a payout is genuinely overdue (past its normal cycle length).
+            Otherwise we return 0 — the funds are in the normal clearing cycle
+            and will be paid on Etsy's next scheduled disbursement.
+
+            Rules:
+              - balance <= 0                                → 0
+              - fewer than 2 DISBURSE entries (can't know schedule) → 0
+              - days_since_last_deposit <= inter_gap + 2    → 0 (normal cycle)
+              - otherwise → full balance (payout is overdue)
             """
             shop_filter = [
                 LedgerEntry.tenant_id == tid,
                 LedgerEntry.shop_id == sid,
             ]
 
-            # Find the most recent deposit date (DISBURSE2 or DISBURSE)
-            last_deposit_row = (
-                self.db.query(LedgerEntry.entry_created_at)
-                .filter(and_(*shop_filter))
-                .filter(LedgerEntry.entry_type.in_(["DISBURSE2", "DISBURSE"]))
-                .order_by(LedgerEntry.entry_created_at.desc())
-                .first()
-            )
-
-            if not last_deposit_row:
-                # No deposit history yet.
-                # Etsy holds recent PAYMENT_GROSS entries in a clearing window (~4 days).
-                # available = balance - PAYMENT_GROSS from last 4 days.
-                # This correctly handles:
-                #   - Daily shops: no recent gross (or already cleared) → full balance
-                #   - Monthly shops on first deposit day: recent gross deducted → partial balance
-                shop_balance_0 = (
-                    self.db.query(func.coalesce(func.sum(LedgerEntry.amount), 0))
-                    .filter(and_(*shop_filter))
-                    .scalar()
-                ) or 0
-                clearing_cutoff = now - timedelta(days=4)
-                recent_gross = (
-                    self.db.query(func.coalesce(func.sum(LedgerEntry.amount), 0))
-                    .filter(and_(*shop_filter))
-                    .filter(LedgerEntry.entry_type == "PAYMENT_GROSS")
-                    .filter(LedgerEntry.entry_created_at >= clearing_cutoff)
-                    .scalar()
-                ) or 0
-                return max(0, shop_balance_0 - recent_gross)
-
-            last_deposit_dt = last_deposit_row[0]
-            days_since_deposit = (now - last_deposit_dt).days
-
-            # Total account balance (all entries ever)
             shop_balance = (
                 self.db.query(func.coalesce(func.sum(LedgerEntry.amount), 0))
                 .filter(and_(*shop_filter))
                 .scalar()
             ) or 0
+            if shop_balance <= 0:
+                return 0
 
-            # Determine deposit schedule: check gap between last two deposits.
-            # ≤ 21 days gap  → daily / weekly schedule  → funds clear fast → full balance available
-            # > 21 days gap  → monthly schedule          → current-cycle approach
-            is_monthly = False
-            second_deposit_row = (
+            # Need at least 2 disbursements to determine cycle length.
+            last_two = (
                 self.db.query(LedgerEntry.entry_created_at)
                 .filter(and_(*shop_filter))
                 .filter(LedgerEntry.entry_type.in_(["DISBURSE2", "DISBURSE"]))
                 .order_by(LedgerEntry.entry_created_at.desc())
-                .offset(1)
-                .first()
+                .limit(2)
+                .all()
             )
-            if second_deposit_row:
-                inter_gap = (last_deposit_dt - second_deposit_row[0]).days
-                is_monthly = inter_gap > 21
-                # Even if gap looked daily/weekly, check if deposit is overdue by >7 days.
-                # E.g. two deposits 3 days apart but 11 days since last → not really daily.
-                if not is_monthly and (days_since_deposit - inter_gap) >= 7:
-                    is_monthly = True
-            else:
-                # Only one deposit on record: estimate from how long payments accumulated
-                # before that deposit.  Long accumulation (> 21 days) → monthly schedule.
-                oldest_before = (
-                    self.db.query(func.min(LedgerEntry.entry_created_at))
-                    .filter(and_(*shop_filter))
-                    .filter(LedgerEntry.entry_type == "PAYMENT_GROSS")
-                    .filter(LedgerEntry.entry_created_at < last_deposit_dt)
-                    .scalar()
-                )
-                if oldest_before:
-                    is_monthly = (last_deposit_dt - oldest_before).days > 21
-                # else: no payments before deposit → can't tell → keep is_monthly=False
-
-            if days_since_deposit > 60:
-                # Very stale deposit (shop likely disconnected/paused) — return full balance
-                return max(0, shop_balance)
-
-            if is_monthly:
-                # Monthly schedule: nothing is available until the next monthly deposit date.
+            if len(last_two) < 2:
                 return 0
 
-            # Daily / weekly schedule:
-            # "Available for deposit" = net income accumulated since the last bank transfer.
-            current_cycle = (
-                self.db.query(func.coalesce(func.sum(LedgerEntry.amount), 0))
-                .filter(and_(*shop_filter))
-                .filter(LedgerEntry.entry_created_at > last_deposit_dt)
-                .scalar()
-            ) or 0
+            last_deposit_dt = last_two[0][0]
+            prev_deposit_dt = last_two[1][0]
+            inter_gap = max(1, (last_deposit_dt - prev_deposit_dt).days)
+            days_since_last = (now - last_deposit_dt).days
 
-            # Edge case: current_cycle is negative (e.g. a large refund hit after the deposit)
-            # but the overall balance is still positive because Etsy ran a RECOUP to collect
-            # the debt from the next sale. In that case the remaining balance is available.
-            if current_cycle < 0 and shop_balance > 0:
-                has_recoup = (
-                    self.db.query(LedgerEntry.id)
-                    .filter(and_(*shop_filter))
-                    .filter(LedgerEntry.entry_created_at > last_deposit_dt)
-                    .filter(LedgerEntry.entry_type.in_(["RECOUP", "recoup"]))
-                    .first()
-                )
-                if has_recoup:
-                    return max(0, shop_balance)
+            # Payout is overdue only if noticeably past the normal cycle length.
+            # Buffer of 2 days to avoid showing "available" right before the
+            # regular scheduled payout fires.
+            if days_since_last <= inter_gap + 2:
+                return 0
 
-            return max(0, current_cycle)
+            # Overdue: the full positive balance is effectively ready for payout.
+            return int(shop_balance)
 
         # Determine which shops to iterate over
         all_shop_ids: List[int] = []
