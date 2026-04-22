@@ -588,29 +588,23 @@ class EtsyClient:
         etsy_shop_id: str,
     ) -> Optional[Dict[str, Any]]:
         """
-        Get shop payment account (balance, available_for_payout, reserve).
-        May not exist in Etsy API; returns None on 404/error.
-        Required scope: billing_r or transactions_r.
+        DEPRECATED: /application/shops/{id}/payment-account doesn't exist in
+        Etsy API v3 (always returns 404). Kept as no-op for backwards compat.
+        Balance data is computed from ledger-entries instead.
         """
+        return None
+        # Unreachable — kept for reference:
         try:
             data = await self._make_request(
                 shop_id,
                 "GET",
                 f"/application/shops/{etsy_shop_id}/payment-account",
             )
-            import logging as _log
-            _log.getLogger(__name__).warning(
-                f"[PAYMENT_ACCOUNT_RAW] shop={etsy_shop_id} type={type(data).__name__} keys={list(data.keys()) if isinstance(data, dict) else 'N/A'} data={str(data)[:500]}"
-            )
             if isinstance(data, dict) and "results" in data:
                 results = data.get("results", [])
                 return results[0] if results else None
             return data if isinstance(data, dict) else None
         except EtsyAPIError as exc:
-            import logging as _log
-            _log.getLogger(__name__).warning(
-                f"[PAYMENT_ACCOUNT] shop={etsy_shop_id} status={exc.status_code} msg={exc!r}"
-            )
             if exc.status_code in (404, 400, 403, 500):
                 return None
             raise

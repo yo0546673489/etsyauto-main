@@ -239,42 +239,12 @@ class FinancialService:
         if cached:
             return cached
 
-        # Prefer shop_financial_state when available (from payment-account endpoint)
-        target_shops = shop_ids or ([shop_id] if shop_id else None)
-        if target_shops and len(target_shops) == 1:
-            state = (
-                self.db.query(ShopFinancialState)
-                .filter(ShopFinancialState.shop_id == target_shops[0])
-                .first()
-            )
-            if state:
-                recent_payouts = (
-                    self.db.query(LedgerEntry.amount, LedgerEntry.entry_created_at)
-                    .filter(
-                        LedgerEntry.tenant_id == tenant_id,
-                        LedgerEntry.shop_id == target_shops[0],
-                        LedgerEntry.entry_type.in_(["payout", "Payment", "Deposit"]),
-                        LedgerEntry.entry_created_at >= datetime.now(timezone.utc) - timedelta(days=30),
-                    )
-                    .order_by(LedgerEntry.entry_created_at.desc())
-                    .limit(10)
-                    .all()
-                )
-                result = {
-                    "current_balance": state.balance,
-                    "reserve_held": abs(state.reserve_amount or 0),
-                    "available_for_payout": max(0, state.available_for_payout),
-                    "currency": state.currency_code,
-                    "recent_payouts": [
-                        {"amount": abs(p[0]), "date": p[1].isoformat() if p[1] else None}
-                        for p in recent_payouts
-                    ],
-                    "as_of": datetime.now(timezone.utc).isoformat(),
-                }
-                self._set_cached(ck, result)
-                return result
+        # NOTE: Previously we short-circuited to ShopFinancialState for single-shop
+        # calls, but that table is never populated (Etsy's /payment-account endpoint
+        # returns 404 — doesn't exist in API v3). Always compute from ledger so that
+        # single-shop and multi-shop views return consistent values.
 
-        # Fallback: compute balance as SUM(amount) across all ledger entries.
+        # Compute balance as SUM(amount) across all ledger entries.
         # This is more reliable than using the `balance` field on the latest row,
         # because some entry types (e.g. prolist/advertising) may store incorrect
         # running-balance values in that column.

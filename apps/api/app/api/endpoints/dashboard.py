@@ -163,164 +163,32 @@ async def get_dashboard_stats(
         new_orders_unread = total_orders
 
     # ── Current balance + available for deposit ─────────────────────────
+    # Unified source of truth: locally-synced ledger entries.
+    # Etsy's /payment-account endpoint returns 404 (doesn't exist in API v3),
+    # so we always compute from ledger. Single-shop and multi-shop use the
+    # SAME calculation — eliminates inconsistency between views.
     available_for_payout = 0
-    available_for_deposit = None   # None = unknown (show —)
+    available_for_deposit = None
     payout_currency = "ILS"
     payout_label = "יתרה נוכחית"
 
-    from app.models.financials import ShopFinancialState
-    from app.models.tenancy import Shop as _Shop
-
-    CACHE_MAX_AGE_SECONDS = 600  # 10 minutes — max age before we re-fetch from Etsy
-
-    etsy_balance_fetched = False
-
-    # ── 1st attempt: read from DB cache (shop_financial_state) ──────────
-    # Populated every 10 min by Celery Beat → sync_payment_account_all
-    # available_for_deposit = available_funds from Etsy (exact match to Etsy UI)
-    # ledger_balance        = ledger_balance from Etsy (total account balance)
-    if parsed_shop_ids:
-        try:
-            now_utc = datetime.now(timezone.utc)
-            states = (
-                db.query(ShopFinancialState)
-                .filter(ShopFinancialState.shop_id.in_(parsed_shop_ids))
-                .all()
-            )
-            # Only use cache if ALL requested shops have fresh data from Etsy API
-            fresh_states = [
-                s for s in states
-                if s.etsy_api_available is True
-                and s.available_for_deposit is not None
-                and s.updated_at is not None
-                and (now_utc - s.updated_at).total_seconds() < CACHE_MAX_AGE_SECONDS
-            ]
-            if len(fresh_states) == len(parsed_shop_ids):
-                # All shops: DB cache is fresh — sum up and return
-                total_deposit = sum(s.available_for_deposit for s in fresh_states)
-                total_balance = sum(
-                    s.ledger_balance if s.ledger_balance is not None else s.balance
-                    for s in fresh_states
-                )
-                available_for_deposit = total_deposit / 100
-                available_for_payout = total_balance / 100
-                payout_currency = fresh_states[0].currency_code or "ILS"
-                etsy_balance_fetched = True
-                logger.info(
-                    f"[balance] served from DB cache: deposit={available_for_deposit} "
-                    f"balance={available_for_payout} shops={parsed_shop_ids}"
-                )
-        except Exception as _e:
-            logger.warning(f"[balance] DB cache read failed: {_e!r}")
-
-    # ── 2nd attempt: call Etsy API directly (cache miss or stale) ───────
-    # Only for single-shop view (avoids too many concurrent API calls)
-    if not etsy_balance_fetched and parsed_shop_ids and len(parsed_shop_ids) == 1:
-        try:
-            from app.services.etsy_client import EtsyClient
-            _etsy = EtsyClient(db)
-            _shop = db.query(_Shop).filter(_Shop.id == parsed_shop_ids[0]).first()
-            if _shop and _shop.etsy_shop_id and _shop.status == "connected":
-                acct = await _etsy.get_payment_account(
-                    shop_id=parsed_shop_ids[0],
-                    etsy_shop_id=_shop.etsy_shop_id,
-                )
-                if acct and isinstance(acct, dict):
-                    def _extract_money(field_name: str):
-                        obj = acct.get(field_name)
-                        if obj is None:
-                            return None, None
-                        if isinstance(obj, dict):
-                            amt = obj.get("amount")
-                            divisor = obj.get("divisor") or 100
-                            ccy = obj.get("currency_code") or "ILS"
-                            if amt is not None:
-                                return float(amt) / float(divisor), ccy
-                        elif isinstance(obj, (int, float)):
-                            return float(obj), acct.get("currency_code", "ILS")
-                        return None, None
-
-                    # available_funds = "Available for deposit" in Etsy UI
-                    dep_val, dep_ccy = _extract_money("available_funds")
-                    # ledger_balance  = total account balance
-                    bal_val, bal_ccy = _extract_money("ledger_balance")
-
-                    if dep_val is not None:
-                        available_for_deposit = dep_val
-                        etsy_balance_fetched = True
-                    if bal_val is not None:
-                        available_for_payout = bal_val
-                        payout_currency = bal_ccy or dep_ccy or "ILS"
-                    elif dep_val is not None:
-                        available_for_payout = dep_val
-                        payout_currency = dep_ccy or "ILS"
-
-                    logger.info(
-                        f"[balance] live API: deposit={available_for_deposit} "
-                        f"balance={available_for_payout} shop={parsed_shop_ids[0]}"
-                    )
-
-                    # Persist to DB so next request gets cache hit
-                    try:
-                        from app.worker.tasks.financial_tasks import _normalize_etsy_money
-                        now_utc2 = datetime.now(timezone.utc)
-                        _ccy = (bal_ccy or dep_ccy or "ILS")[:3].upper()
-                        _state = (
-                            db.query(ShopFinancialState)
-                            .filter(ShopFinancialState.shop_id == parsed_shop_ids[0])
-                            .first()
-                        )
-                        if _state:
-                            _state.available_for_deposit = int(round((dep_val or 0) * 100))
-                            _state.ledger_balance = int(round((bal_val or 0) * 100))
-                            _state.pending_funds = int(round(
-                                (_extract_money("pending_funds")[0] or 0) * 100
-                            ))
-                            _state.currency_code = _ccy
-                            _state.etsy_api_available = True
-                            _state.updated_at = now_utc2
-                        else:
-                            _state = ShopFinancialState(
-                                shop_id=parsed_shop_ids[0],
-                                tenant_id=context.tenant_id,
-                                available_for_deposit=int(round((dep_val or 0) * 100)),
-                                ledger_balance=int(round((bal_val or 0) * 100)),
-                                pending_funds=int(round(
-                                    (_extract_money("pending_funds")[0] or 0) * 100
-                                )),
-                                currency_code=_ccy,
-                                balance=int(round((bal_val or 0) * 100)),
-                                available_for_payout=int(round((dep_val or 0) * 100)),
-                                etsy_api_available=True,
-                                updated_at=now_utc2,
-                            )
-                            db.add(_state)
-                        db.commit()
-                    except Exception as _persist_err:
-                        logger.warning(f"[balance] failed to persist to DB: {_persist_err!r}")
-        except Exception as _e:
-            logger.warning(f"[balance] live API call failed: {_e!r}")
-
-    # ── 3rd attempt (fallback): compute from locally-synced ledger entries ──
-    # Used when: API unavailable (404 shops) OR multi-shop view with stale cache
-    if not etsy_balance_fetched:
-        try:
-            svc = FinancialService(db)
-            payout_data = svc.get_payout_estimate(
-                tenant_id=context.tenant_id,
-                shop_ids=parsed_shop_ids if parsed_shop_ids else None,
-            )
-            available_for_payout = payout_data.get("current_balance", 0) / 100
-            payout_currency = payout_data.get("currency", "ILS")
-            available_for_deposit = payout_data.get("available_for_deposit", 0) / 100
-            logger.info(
-                f"[balance] ledger fallback: deposit={available_for_deposit} "
-                f"balance={available_for_payout} shops={parsed_shop_ids}"
-            )
-        except Exception as _e:
-            logger.error(f"[balance] ledger fallback failed — balance will show 0: {_e!r}")
-            available_for_payout = 0
-            payout_currency = "ILS"
+    try:
+        svc = FinancialService(db)
+        payout_data = svc.get_payout_estimate(
+            tenant_id=context.tenant_id,
+            shop_ids=parsed_shop_ids if parsed_shop_ids else None,
+        )
+        available_for_payout = payout_data.get("current_balance", 0) / 100
+        payout_currency = payout_data.get("currency", "ILS")
+        available_for_deposit = payout_data.get("available_for_deposit", 0) / 100
+        logger.info(
+            f"[balance] ledger: deposit={available_for_deposit} "
+            f"balance={available_for_payout} shops={parsed_shop_ids}"
+        )
+    except Exception as _e:
+        logger.error(f"[balance] ledger calc failed — balance will show 0: {_e!r}")
+        available_for_payout = 0
+        payout_currency = "ILS"
 
     # ── Monthly net profit ──────────────────────────────────────────────
     monthly_net_profit = None
