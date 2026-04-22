@@ -19,6 +19,7 @@ import {
   Settings,
   Activity,
   Store,
+  BookKey,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useLanguage } from '@/lib/language-context';
@@ -43,6 +44,7 @@ const ownerNavItems: NavItem[] = [
   { name: 'sidebar.discounts', href: '/discounts', icon: Tag,           feature: 'discounts' },
   { name: 'sidebar.messages',  href: '/messages',  icon: MessageCircle, feature: 'messages' },
   { name: 'sidebar.automation',href: '/automation',icon: Activity,      feature: 'automations' },
+  { name: 'sidebar.shopsInfo', href: '/shops-info', icon: BookKey },
   { name: 'sidebar.newStore',  href: '/stores/new',icon: Store },
 ];
 
@@ -69,6 +71,7 @@ const adminNavItems: NavItem[] = [
   { name: 'sidebar.discounts', href: '/discounts', icon: Tag,           feature: 'discounts' },
   { name: 'sidebar.messages',  href: '/messages',  icon: MessageCircle, feature: 'messages' },
   { name: 'sidebar.automation',href: '/automation',icon: Activity,      feature: 'automations' },
+  { name: 'sidebar.shopsInfo', href: '/shops-info', icon: BookKey },
   { name: 'sidebar.newStore',  href: '/stores/new',icon: Store },
 ];
 

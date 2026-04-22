@@ -270,6 +270,9 @@ app.include_router(user_preferences.router, prefix="/api/user-preferences", tags
 app.include_router(currency.router, prefix="/api/currency", tags=["Currency"])
 app.include_router(messages_router.router)
 
+from app.api.endpoints import shop_credentials as shop_credentials_endpoint
+app.include_router(shop_credentials_endpoint.router, prefix="/api/shop-credentials", tags=["Shop Credentials"])
+
 from app.api.endpoints import financial_invoices
 app.include_router(financial_invoices.router, prefix="/api/financials/invoices", tags=["Invoices"])
 

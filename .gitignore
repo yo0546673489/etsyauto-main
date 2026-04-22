@@ -109,3 +109,11 @@ _backup_temp/
 
 # GitHub Actions (cannot push without workflow PAT scope)
 .github/
+
+# Local diagnostic scripts (may contain credentials)
+_*.py
+_*.txt
+env_check.txt
+api_test.txt
+*_output.txt
+rebuild_output.txt

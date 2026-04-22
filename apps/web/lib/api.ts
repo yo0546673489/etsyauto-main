@@ -1753,3 +1753,40 @@ export const discountsApi = {
     return apiRequest<DiscountTask[]>(`/api/discounts/tasks?${params}`);
   },
 };
+
+/**
+ * Shop Credentials — CRUD for the private shop-details list.
+ */
+export interface ShopCredential {
+  id: number;
+  shop_number: number | null;
+  name: string | null;
+  email: string | null;
+  former_email: string | null;
+  password: string | null;
+  etsy_password: string | null;
+  phone: string | null;
+  credit_card: string | null;
+  bank: string | null;
+  proxy: string | null;
+  ebay: string | null;
+  notes: string | null;
+}
+
+export type ShopCredentialInput = Partial<Omit<ShopCredential, 'id'>>;
+
+export const shopCredentialsApi = {
+  list: () => apiRequest<ShopCredential[]>('/api/shop-credentials'),
+  create: (payload: ShopCredentialInput) =>
+    apiRequest<ShopCredential>('/api/shop-credentials', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  update: (id: number, payload: ShopCredentialInput) =>
+    apiRequest<ShopCredential>(`/api/shop-credentials/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+  remove: (id: number) =>
+    apiRequest<void>(`/api/shop-credentials/${id}`, { method: 'DELETE' }),
+};
