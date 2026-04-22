@@ -3,7 +3,7 @@
 מריצים בשרת: docker exec etsy-api python /app/check_all_shops_real.py
 """
 import asyncio
-from app.database import SessionLocal
+from app.core.database import SessionLocal
 from app.models.tenancy import Shop
 from app.services.etsy_client import EtsyClient
 
