@@ -244,33 +244,47 @@ class FinancialService:
         # returns 404 — doesn't exist in API v3). Always compute from ledger so that
         # single-shop and multi-shop views return consistent values.
 
-        # Compute balance as SUM(amount) across all ledger entries.
-        # This is more reliable than using the `balance` field on the latest row,
-        # because some entry types (e.g. prolist/advertising) may store incorrect
-        # running-balance values in that column.
         filters = [LedgerEntry.tenant_id == tenant_id]
         self._apply_shop_filter(filters, LedgerEntry.shop_id, shop_id, shop_ids)
 
-        # SUM(amount) gives the true net balance remaining in the account after
-        # all transactions (sales, fees, disbursements, advertising, etc.).
-        balance_row = (
+        # ── Multi-currency aware balance ───────────────────────────────
+        # Ledger entries across different shops can be in different currencies
+        # (e.g. some shops use ILS, others USD). We MUST NOT sum raw cents
+        # across currencies. Instead:
+        #   1. Group SUM(amount) by (shop_id, currency)
+        #   2. Convert each group to a common reporting currency (USD)
+        #   3. Sum in USD
+        # The caller (dashboard endpoint) then converts USD → display currency.
+        per_group = (
             self.db.query(
+                LedgerEntry.shop_id,
+                LedgerEntry.currency,
                 func.coalesce(func.sum(LedgerEntry.amount), 0),
             )
             .filter(and_(*filters))
-            .first()
-        )
-        current_balance = balance_row[0] if balance_row else 0
-
-        # Get currency from the most recent entry
-        currency_row = (
-            self.db.query(LedgerEntry.currency)
-            .filter(and_(*filters))
             .filter(LedgerEntry.currency.isnot(None))
-            .order_by(LedgerEntry.entry_created_at.desc(), LedgerEntry.id.desc())
-            .first()
+            .group_by(LedgerEntry.shop_id, LedgerEntry.currency)
+            .all()
         )
-        currency = currency_row[0] if currency_row else "USD"
+
+        from app.services.exchange_rate_service import convert_amount as _convert
+
+        REPORTING_CCY = "USD"
+        current_balance = 0  # in REPORTING_CCY cents
+        for _sid, _ccy, _cents in per_group:
+            if not _cents:
+                continue
+            try:
+                if _ccy == REPORTING_CCY:
+                    current_balance += int(_cents)
+                else:
+                    conv, *_ = _convert(int(_cents), _ccy, REPORTING_CCY, db=self.db)
+                    current_balance += conv
+            except Exception as _e:
+                logger.warning(f"[payout_estimate] fx conversion {_ccy}->{REPORTING_CCY} failed for shop={_sid}: {_e!r}")
+                current_balance += int(_cents)
+
+        currency = REPORTING_CCY
 
         payout_filters = filters + [
             LedgerEntry.entry_type.in_(["payout", "Payment", "Deposit"]),
@@ -434,9 +448,37 @@ class FinancialService:
             )
             all_shop_ids = [r[0] for r in rows if r[0] is not None]
 
-        available_for_deposit = sum(
-            _available_for_one_shop(tenant_id, sid) for sid in all_shop_ids
-        )
+        # Each _available_for_one_shop returns cents in the shop's native currency.
+        # Convert each to REPORTING_CCY (USD) before summing.
+        # Find each shop's native currency from its most recent ledger entry.
+        shop_ccy_map: Dict[int, str] = {}
+        if all_shop_ids:
+            ccy_rows = (
+                self.db.query(LedgerEntry.shop_id, LedgerEntry.currency)
+                .filter(LedgerEntry.tenant_id == tenant_id)
+                .filter(LedgerEntry.shop_id.in_(all_shop_ids))
+                .filter(LedgerEntry.currency.isnot(None))
+                .distinct()
+                .all()
+            )
+            for _sid, _c in ccy_rows:
+                shop_ccy_map.setdefault(_sid, _c)
+
+        available_for_deposit = 0
+        for sid in all_shop_ids:
+            cents = _available_for_one_shop(tenant_id, sid)
+            if not cents:
+                continue
+            shop_ccy = shop_ccy_map.get(sid) or REPORTING_CCY
+            try:
+                if shop_ccy == REPORTING_CCY:
+                    available_for_deposit += int(cents)
+                else:
+                    conv, *_ = _convert(int(cents), shop_ccy, REPORTING_CCY, db=self.db)
+                    available_for_deposit += conv
+            except Exception as _e:
+                logger.warning(f"[payout_estimate] available fx {shop_ccy}->{REPORTING_CCY} shop={sid}: {_e!r}")
+                available_for_deposit += int(cents)
 
         result = {
             "current_balance": current_balance,
