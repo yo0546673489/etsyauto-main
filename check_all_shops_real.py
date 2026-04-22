@@ -36,7 +36,7 @@ async def main():
                     etsy_shop_id=shop.etsy_shop_id,
                 )
                 if not data or not isinstance(data, dict):
-                    failures.append((shop.id, shop.shop_name, "no data"))
+                    failures.append((shop.id, shop.display_name, "no data (404 or empty)"))
                     continue
 
                 def extract(name):
@@ -61,13 +61,13 @@ async def main():
 
                 results.append({
                     "id": shop.id,
-                    "name": shop.shop_name,
+                    "name": shop.display_name,
                     "available": available,
                     "balance": balance,
                     "currency": ccy,
                 })
             except Exception as e:
-                failures.append((shop.id, shop.shop_name, str(e)[:80]))
+                failures.append((shop.id, shop.display_name, str(e)[:80]))
 
         # הדפסה
         print(f"{'ID':<5} {'שם':<30} {'יתרה':>15} {'זמין להפקדה':>18}")
